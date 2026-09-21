@@ -1,0 +1,151 @@
+openapi: 3.0.3
+info:
+  title: Byakugan Core API
+  version: 0.1.0
+  description: Headless synchronous fraud checks. An allow result is not a settlement instruction. Decision endpoints are anonymous when API_KEYS is empty and require X-API-Key when API_KEYS is configured.
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      responses:
+        "200": { description: Process is alive }
+  /readyz:
+    get:
+      responses:
+        "200": { description: In-memory engine is ready }
+  /v1/transfer-checks:
+    post:
+      description: Returns a synchronous decision. Structurally valid JSON whose transfer fields fail domain validation returns 201 with a review decision and validation reasons.
+      security:
+        - {}
+        - ApiKey: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransferCheckRequest' }
+      responses:
+        "201":
+          description: Fraud check completed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferCheck' }
+        "400": { description: Invalid JSON, unknown fields, oversized input, or multiple JSON values }
+        "401": { description: API key required because API_KEYS is configured }
+  /v1/transfer-checks/iso20022:
+    post:
+      description: Parses the first CdtTrfTxInf record and returns a synchronous decision. A parsed transfer that fails domain validation returns 201 with a review decision and validation reasons.
+      security:
+        - {}
+        - ApiKey: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema: { type: string }
+      responses:
+        "201":
+          description: Fraud check completed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferCheck' }
+        "400": { description: Invalid pacs.008 XML }
+        "401": { description: API key required when configured }
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Money:
+      type: object
+      additionalProperties: false
+      properties:
+        amount: { type: number }
+        currency: { type: string }
+    Agent:
+      type: object
+      additionalProperties: false
+      properties:
+        bicfi: { type: string }
+        name: { type: string }
+    Party:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string }
+    AccountRef:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        iban: { type: string }
+        bban: { type: string }
+    PaymentIdentification:
+      type: object
+      additionalProperties: false
+      properties:
+        instruction_id: { type: string }
+        end_to_end_id: { type: string }
+        transaction_id: { type: string }
+        clearing_system_reference: { type: string }
+    Pacs008Transfer:
+      type: object
+      additionalProperties: false
+      properties:
+        message_definition_id: { type: string }
+        schema_namespace: { type: string }
+        message_id: { type: string }
+        creation_date_time: { type: string, format: date-time }
+        payment_identification: { $ref: '#/components/schemas/PaymentIdentification' }
+        instructed_amount: { $ref: '#/components/schemas/Money' }
+        debtor: { $ref: '#/components/schemas/Party' }
+        debtor_account: { $ref: '#/components/schemas/AccountRef' }
+        debtor_agent: { $ref: '#/components/schemas/Agent' }
+        creditor: { $ref: '#/components/schemas/Party' }
+        creditor_account: { $ref: '#/components/schemas/AccountRef' }
+        creditor_agent: { $ref: '#/components/schemas/Agent' }
+        remittance_information: { type: string }
+        interbank_settlement_date: { type: string, format: date }
+    TransferCheckRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        idempotency_key: { type: string }
+        message_type: { type: string }
+        payload: { $ref: '#/components/schemas/Pacs008Transfer' }
+    RuleHit:
+      type: object
+      additionalProperties: false
+      required: [rule_id, rule_name, score_delta, reason]
+      properties:
+        rule_id: { type: string }
+        rule_name: { type: string }
+        outcome: { type: string, enum: [allow, review, block] }
+        score_delta: { type: number }
+        reason: { type: string }
+    TransferCheck:
+      type: object
+      additionalProperties: false
+      required: [id, version, request, decision, score, reasons, rule_hits, created_at]
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        idempotency_key: { type: string }
+        idempotency_fingerprint: { type: string }
+        request: { $ref: '#/components/schemas/TransferCheckRequest' }
+        decision: { type: string, enum: [allow, review, block] }
+        score: { type: number }
+        reasons: { type: array, items: { type: string } }
+        rule_hits: { type: array, items: { $ref: '#/components/schemas/RuleHit' } }
+        created_at: { type: string, format: date-time }
