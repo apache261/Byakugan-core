@@ -1,0 +1,32 @@
+name: Core quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Check public boundary
+        shell: bash
+        run: |
+          for entry in .* *; do
+            case "$entry" in
+              .|..|.git|.github|CONTRIBUTING.md|LICENSE|NOTICE|README.md|SECURITY.md|api|cmd|docs|domain|engine|examples|go.mod|go.sum|iso20022|rules) ;;
+              *) echo "unexpected public top-level path: $entry" >&2; exit 1 ;;
+            esac
+          done
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - run: go mod verify
+      - run: go vet ./...
+      - run: go test -mod=readonly ./...

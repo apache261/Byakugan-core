@@ -1,0 +1,15 @@
+{
+  "message_type": "pacs.008",
+  "idempotency_key": "example-001",
+  "payload": {
+    "message_id": "MSG-001",
+    "creation_date_time": "2026-09-21T08:00:00Z",
+    "payment_identification": { "end_to_end_id": "E2E-001" },
+    "instructed_amount": { "amount": 1250.50, "currency": "PHP" },
+    "debtor_account": { "id": "debtor-001" },
+    "debtor_agent": { "bicfi": "DEUTPHMM" },
+    "creditor_account": { "id": "creditor-001" },
+    "creditor_agent": { "bicfi": "BOPIPHMM" }
+  }
+}
+
