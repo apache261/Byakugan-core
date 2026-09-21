@@ -9,6 +9,22 @@ This repository intentionally contains the public decision-engine foundation.
 Operational user interfaces and commercial extensions are distributed
 separately.
 
+## About Byakugan
+
+Byakugan is an explainable bank-transfer fraud detection project built for
+learning, prototyping, and lightweight deployments. Its name is inspired by
+the Byakugan ability from the *Naruto* series: the system is intended to help
+operators clearly "see" transfer risk, account behavior, matched rules, and
+decision signals.
+
+The project was created in response to the limited number of approachable
+open-source fraud detection services available to developers. Byakugan Core
+provides a dependency-light foundation that can be studied, extended, and
+integrated without requiring the proprietary dashboard or commercial suite.
+
+Byakugan produces fraud signals only. It does not settle, authorize, reject,
+or hold payments.
+
 ## Run
 
 Go 1.24 or newer is required.
