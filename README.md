@@ -61,6 +61,16 @@ instruction and must not be treated as one.
 
 API details are in [docs/openapi.yaml](docs/openapi.yaml).
 
+## Full Suite and Dashboard
+
+The administrative dashboard and full-featured Byakugan suite are maintained
+privately. The Full edition includes the operator dashboard, commercial
+licensing, AML/CFT workflows, advanced fraud capabilities, integrations, and
+production deployment tooling.
+
+For private Full edition access, dashboard inquiries, or commercial support,
+contact [lynolibarra@gmail.com](mailto:lynolibarra@gmail.com).
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
