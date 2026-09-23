@@ -58,6 +58,7 @@ type Pacs008Transfer struct {
 	CreditorAgent           Agent                 `json:"creditor_agent"`
 	RemittanceInformation   string                `json:"remittance_information,omitempty"`
 	InterbankSettlementDate string                `json:"interbank_settlement_date,omitempty"`
+	RequestedExecutionDate  string                `json:"requested_execution_date,omitempty"`
 }
 
 type TransferCheckRequest struct {
@@ -132,6 +133,11 @@ func ValidateTransfer(req TransferCheckRequest) []string {
 	}
 	if strings.TrimSpace(p.CreditorAgent.BICFI) == "" {
 		errs = append(errs, "payload.creditor_agent.bicfi is required")
+	}
+	if value := strings.TrimSpace(p.RequestedExecutionDate); value != "" {
+		if _, err := time.Parse("2006-01-02", value); err != nil {
+			errs = append(errs, "payload.requested_execution_date must use YYYY-MM-DD")
+		}
 	}
 	return errs
 }

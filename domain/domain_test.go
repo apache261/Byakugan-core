@@ -4,6 +4,7 @@ import (
 	"math"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestValidateTransferReportsCanonicalFieldErrors(t *testing.T) {
@@ -30,5 +31,20 @@ func TestValidationReason(t *testing.T) {
 	want := "validation failed: first; second"
 	if got := ValidationReason([]string{"first", "second"}); got != want {
 		t.Fatalf("reason = %q, want %q", got, want)
+	}
+}
+
+func TestValidateTransferRejectsInvalidRequestedExecutionDate(t *testing.T) {
+	request := TransferCheckRequest{MessageType: "pacs.008", Payload: Pacs008Transfer{
+		MessageID: "message", CreationDateTime: time.Now().UTC(),
+		PaymentIdentification: PaymentIdentification{EndToEndID: "e2e"},
+		InstructedAmount:      Money{Amount: 1, Currency: "PHP"},
+		DebtorAccount:         AccountRef{ID: "debtor"}, CreditorAccount: AccountRef{ID: "creditor"},
+		DebtorAgent: Agent{BICFI: "DEUTPHMM"}, CreditorAgent: Agent{BICFI: "BOPIPHMM"},
+		RequestedExecutionDate: "23/09/2026",
+	}}
+	errors := ValidateTransfer(request)
+	if len(errors) != 1 || errors[0] != "payload.requested_execution_date must use YYYY-MM-DD" {
+		t.Fatalf("validation errors = %#v", errors)
 	}
 }
