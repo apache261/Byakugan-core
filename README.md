@@ -5,6 +5,9 @@ ISO 20022-style credit transfers. It provides a canonical JSON request, a
 `pacs.008` XML adapter, an in-memory idempotency store, and a portable JSON rule
 evaluator. It has no external runtime dependencies.
 
+Rule documents are validated strictly. Unknown fields and trailing JSON are
+rejected so commercial extensions cannot be mistaken for Community rules.
+
 This repository intentionally contains the public decision-engine foundation.
 Operational user interfaces and commercial extensions are distributed
 separately.

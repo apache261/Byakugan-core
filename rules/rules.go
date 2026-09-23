@@ -1,8 +1,11 @@
 package rules
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -23,8 +26,8 @@ type Definition struct {
 }
 
 func Evaluate(rule domain.Rule, req domain.TransferCheckRequest) (domain.RuleHit, bool, error) {
-	var definition Definition
-	if err := json.Unmarshal(rule.Definition, &definition); err != nil {
+	definition, err := decodeDefinition(rule.Definition)
+	if err != nil {
 		return domain.RuleHit{}, false, fmt.Errorf("invalid rule definition: %w", err)
 	}
 	if err := validateDefinition(definition); err != nil {
@@ -43,14 +46,31 @@ func Evaluate(rule domain.Rule, req domain.TransferCheckRequest) (domain.RuleHit
 
 // Validate checks a rule before it is installed in a long-running process.
 func Validate(rule domain.Rule) error {
-	var definition Definition
-	if err := json.Unmarshal(rule.Definition, &definition); err != nil {
+	definition, err := decodeDefinition(rule.Definition)
+	if err != nil {
 		return fmt.Errorf("invalid rule definition: %w", err)
 	}
 	if err := validateDefinition(definition); err != nil {
 		return fmt.Errorf("invalid rule definition: %w", err)
 	}
 	return nil
+}
+
+func decodeDefinition(raw json.RawMessage) (Definition, error) {
+	var definition Definition
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&definition); err != nil {
+		return Definition{}, err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return Definition{}, fmt.Errorf("multiple JSON values")
+		}
+		return Definition{}, err
+	}
+	return definition, nil
 }
 
 func validateDefinition(def Definition) error {
