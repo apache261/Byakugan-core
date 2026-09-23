@@ -1,18 +1,66 @@
 # Byakugan Core
 
-Byakugan Core is the open-source fraud-decision library behind Byakugan. It can
-be embedded directly in a Go application or run through the included small
-`net/http` server. It provides canonical payment types, strict validation,
-`pacs.008` parsing, contextual and time-window rules, score-based policies,
-bounded in-memory history, and idempotent synchronous decisions. It has no
-external runtime dependencies.
+**Explainable payment-fraud decisions without a heavyweight platform.**
+
+Byakugan Core is the Apache-2.0 fraud-decision library behind Byakugan. Embed it
+in a Go application or run the included small `net/http` service. Core turns
+canonical JSON or ISO 20022 `pacs.008` transfers into synchronous `allow`,
+`review`, or `block` signals with scores, matched rules, and human-readable
+reasons.
+
+Core has no external runtime dependencies. It is suitable for learning,
+prototyping, local services, integration tests, and lightweight production
+workloads where an application supplies its own durable infrastructure.
 
 Rule documents are validated strictly. Unknown fields and trailing JSON are
 rejected so commercial extensions cannot be mistaken for Community rules.
 
-The fraud engine is intentionally public and useful on its own. The commercial
-Full edition builds on this module for its API platform, persistence,
-operations, dashboard, and private signal sources.
+The fraud engine is intentionally public and useful on its own. **Byakugan
+Full** uses the same Core contracts and evaluator, then adds durable operations,
+investigation tooling, advanced signals, and a standalone administration
+dashboard.
+
+## Core Highlights
+
+- Dependency-free Go library and optional `net/http` server.
+- Canonical transfer model plus ISO 20022 `pacs.008` parsing.
+- Strict JSON rule DSL with nested `all` and `any` conditions.
+- Amount, currency, account, BIC, route, remittance, and execution-date rules.
+- Time-window velocity, accumulated amount, repeated-amount, unique-creditor,
+  and first-time-beneficiary signals.
+- Account risk tiers, blocked accounts, and per-account disabled rules.
+- Score-based review and block thresholds with explainable rule hits.
+- Thread-safe bounded history and idempotent request replay.
+- Precomputed metric injection for database-backed, high-volume integrations.
+- Atomic runtime rule replacement and strict rejection of unknown rule fields.
+- API-key protection for decision endpoints, plus health and readiness routes.
+- Apache License 2.0 with no proprietary runtime dependency.
+
+## Core or Full?
+
+| Capability | Byakugan Core | Byakugan Full |
+| --- | --- | --- |
+| License and source | Apache-2.0, public | Proprietary, private distribution |
+| Primary use | Embeddable fraud library and lightweight HTTP service | Production fraud operations and AML/CFT platform |
+| JSON and ISO 20022 `pacs.008` intake | Included | Included through Core |
+| Explainable rule DSL and synchronous decisions | Included | Included through Core, with managed rule workflows |
+| Velocity, beneficiary, route, remittance, and risk-tier rules | In-memory history or caller-provided metrics | Durable aggregate queries backed by PostgreSQL |
+| Idempotency | Bounded in-memory replay | Durable PostgreSQL/Redis-aware processing |
+| Storage | Bring your own, or use bounded memory | PostgreSQL stores and migrations with in-memory development fallback |
+| Cache and multi-replica readiness | Bring your own | Redis integration and operational readiness checks |
+| Account and configuration management | Library policy inputs | Managed accounts, scoped rules, runtime configuration, and imports |
+| Operator interface | Not included | Independently deployable W2UI administration dashboard |
+| Fraud investigations | Decision reasons and rule hits | Cases, priorities, notes, evidence attachments, approvals, and saved views |
+| Advanced fraud signals | Portable deterministic signals | Behavior profiles, network analysis, watchlists, and external/ML scores |
+| Payment-status correlation | Not included | ISO 20022 `pacs.002` intake, correlation, and audit trail |
+| Integrations | Library hooks | Signed webhooks, retries, replay, delivery history, and dead-letter exports |
+| Security and governance | Optional static API keys | Managed API keys, admin sessions, roles, scopes, audit events, and retention controls |
+| AML/CFT | Intentionally separate and not included | Append-only ledger, ingestion, scenarios, screening, alerts, investigations, reports, legal holds, and historical imports |
+| Deployment | Go binary or embedded package | API, dashboard, PostgreSQL, Redis, migrations, licensing, and deployment assets |
+
+Choose **Core** when you want a transparent engine you can embed and extend.
+Choose **Full** when you also need durable operations, analysts and casework,
+governed administration, AML/CFT workflows, and production integrations.
 
 ## Use as a Library
 
@@ -127,17 +175,35 @@ instruction and must not be treated as one.
 
 API details are in [docs/openapi.yaml](docs/openapi.yaml).
 
-## Full Suite and Dashboard
+## Byakugan Full
 
-The administrative dashboard and full-featured Byakugan suite are maintained
-privately. The Full edition adds AML/CFT casework, behavior and network
-analytics, external/ML scoring, watchlists, durable PostgreSQL/Redis adapters,
-webhooks, audit and approval workflows, access control, licensing, and
-production deployment tooling. Those features consume Core rather than being
-required by it.
+Byakugan Full is for teams that need more than a decision function. It packages
+Core into an operational fraud and AML/CFT system while preserving the same
+explainable rule results and canonical transfer contracts.
 
-For private Full edition access, dashboard inquiries, or commercial support,
-contact [lynolibarra@gmail.com](mailto:lynolibarra@gmail.com).
+Full adds:
+
+- a separate, independently deployable fraud-operations dashboard;
+- PostgreSQL persistence, Redis caching, migrations, readiness gates, exports,
+  audit trails, and retention workflows;
+- managed accounts, rules, configurations, API keys, administrators, roles,
+  sessions, and approval controls;
+- fraud cases with notes, attachments, prioritization, metrics, saved views,
+  and manual-review decisions;
+- behavior profiling, network/link signals, watchlists, and governed external
+  model-score ingestion;
+- signed webhook delivery with policy controls, retries, replay, delivery
+  evidence, and dead-letter reporting;
+- ISO 20022 `pacs.002` payment-status correlation independent of fraud decisions;
+- a separate AML/CFT ledger with transaction ingestion, immutable scenario and
+  policy versions, screening evidence, monitoring jobs, alerts, investigations,
+  four-eyes reports, legal holds, retention, and controlled historical imports;
+- offline commercial licensing and production deployment assets.
+
+Core remains the reusable fraud engine; Full supplies the private operational
+and compliance layers around it. For Full edition access, dashboard inquiries,
+integration planning, or commercial support, contact
+[lynolibarra@gmail.com](mailto:lynolibarra@gmail.com).
 
 ## License
 
