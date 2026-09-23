@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Byakugan Core API
-  version: 0.1.0
+  version: 0.2.0
   description: Headless synchronous fraud checks. An allow result is not a settlement instruction. Decision endpoints are anonymous when API_KEYS is empty and require X-API-Key when API_KEYS is configured.
 servers:
   - url: http://localhost:8080
@@ -117,6 +117,7 @@ components:
         creditor_agent: { $ref: '#/components/schemas/Agent' }
         remittance_information: { type: string }
         interbank_settlement_date: { type: string, format: date }
+        requested_execution_date: { type: string, format: date }
     TransferCheckRequest:
       type: object
       additionalProperties: false

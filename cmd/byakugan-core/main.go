@@ -42,7 +42,18 @@ func main() {
 		}
 		maxIdempotencyEntries = parsed
 	}
-	decisionEngine := engine.NewWithOptions(ruleSet, engine.Options{MaxIdempotencyEntries: maxIdempotencyEntries})
+	maxHistoryEntries := engine.DefaultMaxHistoryEntries
+	if value := strings.TrimSpace(os.Getenv("MAX_HISTORY_ENTRIES")); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed <= 0 {
+			log.Fatal("MAX_HISTORY_ENTRIES must be a positive integer")
+		}
+		maxHistoryEntries = parsed
+	}
+	decisionEngine := engine.NewWithOptions(ruleSet, engine.Options{
+		MaxIdempotencyEntries: maxIdempotencyEntries,
+		MaxHistoryEntries:     maxHistoryEntries,
+	})
 	server := &http.Server{Addr: address, Handler: api.New(decisionEngine, api.Options{APIKeys: split(os.Getenv("API_KEYS"))}), ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("byakugan-core listening on %s", address)
 	log.Fatal(server.ListenAndServe())
