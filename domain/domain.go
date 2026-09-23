@@ -97,7 +97,9 @@ type TransferCheck struct {
 
 func ValidateTransfer(req TransferCheckRequest) []string {
 	var errs []string
-	if req.MessageType != "pacs.008" {
+	if req.MessageType == "" {
+		errs = append(errs, "message_type is required")
+	} else if req.MessageType != "pacs.008" {
 		errs = append(errs, "message_type must be pacs.008")
 	}
 	p := req.Payload
@@ -116,14 +118,20 @@ func ValidateTransfer(req TransferCheckRequest) []string {
 	if strings.TrimSpace(p.InstructedAmount.Currency) == "" {
 		errs = append(errs, "payload.instructed_amount.currency is required")
 	}
-	if strings.TrimSpace(p.DebtorAccount.ID) == "" || strings.TrimSpace(p.CreditorAccount.ID) == "" {
-		errs = append(errs, "debtor and creditor account ids are required")
+	if strings.TrimSpace(p.DebtorAccount.ID) == "" {
+		errs = append(errs, "payload.debtor_account.id is required")
+	}
+	if strings.TrimSpace(p.CreditorAccount.ID) == "" {
+		errs = append(errs, "payload.creditor_account.id is required")
 	}
 	if p.DebtorAccount.ID != "" && p.DebtorAccount.ID == p.CreditorAccount.ID {
 		errs = append(errs, "debtor and creditor account cannot be the same")
 	}
-	if strings.TrimSpace(p.DebtorAgent.BICFI) == "" || strings.TrimSpace(p.CreditorAgent.BICFI) == "" {
-		errs = append(errs, "debtor and creditor agent BICs are required")
+	if strings.TrimSpace(p.DebtorAgent.BICFI) == "" {
+		errs = append(errs, "payload.debtor_agent.bicfi is required")
+	}
+	if strings.TrimSpace(p.CreditorAgent.BICFI) == "" {
+		errs = append(errs, "payload.creditor_agent.bicfi is required")
 	}
 	return errs
 }
