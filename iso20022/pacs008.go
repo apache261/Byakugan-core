@@ -4,8 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -96,8 +94,8 @@ func ParsePacs008(r io.Reader, idempotencyKey string) (domain.TransferCheckReque
 	if strings.TrimSpace(transferAmount.Value) == "" {
 		transferAmount = tx.InstructedAmount
 	}
-	value, err := strconv.ParseFloat(strings.TrimSpace(transferAmount.Value), 64)
-	if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+	value, err := domain.CanonicalAmount(strings.TrimSpace(transferAmount.Value), strings.ToUpper(strings.TrimSpace(transferAmount.Currency)))
+	if err != nil {
 		return domain.TransferCheckRequest{}, fmt.Errorf("invalid pacs.008 amount")
 	}
 	createdAt, err := parseTime(first(message.GroupHeader.CreationDateTime, header.CreationDate))

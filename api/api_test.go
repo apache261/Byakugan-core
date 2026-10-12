@@ -11,7 +11,7 @@ import (
 
 func TestJSONTransferCheckAndAuthentication(t *testing.T) {
 	handler := New(engine.New(nil), Options{APIKeys: []string{"secret"}})
-	body := `{"message_type":"pacs.008","payload":{"message_id":"m","creation_date_time":"2026-09-21T08:00:00Z","payment_identification":{"end_to_end_id":"e"},"instructed_amount":{"amount":1,"currency":"PHP"},"debtor_account":{"id":"d"},"debtor_agent":{"bicfi":"DEUTPHMM"},"creditor_account":{"id":"c"},"creditor_agent":{"bicfi":"BOPIPHMM"}}}`
+	body := `{"message_type":"pacs.008","payload":{"message_id":"m","creation_date_time":"2026-09-21T08:00:00Z","payment_identification":{"end_to_end_id":"e"},"instructed_amount":{"amount": "1","currency":"PHP"},"debtor_account":{"id":"d"},"debtor_agent":{"bicfi":"DEUTPHMM"},"creditor_account":{"id":"c"},"creditor_agent":{"bicfi":"BOPIPHMM"}}}`
 
 	unauthorized := httptest.NewRecorder()
 	handler.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, "/v1/transfer-checks", strings.NewReader(body)))
@@ -45,5 +45,17 @@ func TestJSONTransferCheckRejectsTrailingValue(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/v1/transfer-checks", strings.NewReader(body)))
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestJSONTransferCheckRejectsNumericMoney(t *testing.T) {
+	handler := New(engine.New(nil), Options{})
+	for _, amount := range []string{"0.1", "999999999999999999.99"} {
+		body := `{"message_type":"pacs.008","payload":{"instructed_amount":{"amount":` + amount + `,"currency":"USD"}}}`
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/v1/transfer-checks", strings.NewReader(body)))
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("numeric money accepted: %d %s", response.Code, response.Body.String())
+		}
 	}
 }

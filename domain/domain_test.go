@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"math"
 	"reflect"
 	"testing"
 	"time"
@@ -9,13 +8,13 @@ import (
 
 func TestValidateTransferReportsCanonicalFieldErrors(t *testing.T) {
 	request := TransferCheckRequest{}
-	request.Payload.InstructedAmount.Amount = math.NaN()
+	request.Payload.InstructedAmount.Amount = "NaN"
 	want := []string{
 		"message_type is required",
 		"payload.message_id is required",
 		"payload.creation_date_time is required",
 		"payload.payment_identification.end_to_end_id is required",
-		"payload.instructed_amount.amount must be positive",
+		"payload.instructed_amount.amount must be a positive decimal within currency scale",
 		"payload.instructed_amount.currency is required",
 		"payload.debtor_account.id is required",
 		"payload.creditor_account.id is required",
@@ -38,7 +37,7 @@ func TestValidateTransferRejectsInvalidRequestedExecutionDate(t *testing.T) {
 	request := TransferCheckRequest{MessageType: "pacs.008", Payload: Pacs008Transfer{
 		MessageID: "message", CreationDateTime: time.Now().UTC(),
 		PaymentIdentification: PaymentIdentification{EndToEndID: "e2e"},
-		InstructedAmount:      Money{Amount: 1, Currency: "PHP"},
+		InstructedAmount:      Money{Amount: "1", Currency: "PHP"},
 		DebtorAccount:         AccountRef{ID: "debtor"}, CreditorAccount: AccountRef{ID: "creditor"},
 		DebtorAgent: Agent{BICFI: "DEUTPHMM"}, CreditorAgent: Agent{BICFI: "BOPIPHMM"},
 		RequestedExecutionDate: "23/09/2026",

@@ -3,7 +3,6 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ func TestIdempotencyRetainsOriginalAcrossConflict(t *testing.T) {
 	first := engine.Check(request)
 
 	conflicting := request
-	conflicting.Payload.InstructedAmount.Amount++
+	conflicting.Payload.InstructedAmount.Amount = "51"
 	conflict := engine.Check(conflicting)
 	if conflict.Decision != domain.DecisionReview {
 		t.Fatalf("conflicting payload decision = %q, want review", conflict.Decision)
@@ -34,7 +33,7 @@ func TestIdempotencyRetainsOriginalAcrossConflict(t *testing.T) {
 
 func TestDefaultHighAmountRule(t *testing.T) {
 	request := validRequest()
-	request.Payload.InstructedAmount.Amount = 100000
+	request.Payload.InstructedAmount.Amount = "100000"
 	check := New(DefaultRules()).Check(request)
 	if check.Decision != domain.DecisionReview || len(check.RuleHits) != 1 {
 		t.Fatalf("check = %+v, want one review hit", check)
@@ -43,7 +42,7 @@ func TestDefaultHighAmountRule(t *testing.T) {
 
 func TestNonFiniteAmountIsReviewed(t *testing.T) {
 	request := validRequest()
-	request.Payload.InstructedAmount.Amount = math.NaN()
+	request.Payload.InstructedAmount.Amount = "NaN"
 	check := New(nil).Check(request)
 	if check.Decision != domain.DecisionReview {
 		t.Fatalf("decision = %q, want review", check.Decision)
@@ -51,7 +50,7 @@ func TestNonFiniteAmountIsReviewed(t *testing.T) {
 }
 
 func TestInvalidRuleOutcomeCannotAllow(t *testing.T) {
-	rule := domain.Rule{ID: "typo", Name: "Typo", Enabled: true, Definition: json.RawMessage(`{"field":"amount","op":"gt","value":1,"outcome":"blok","score":100}`)}
+	rule := domain.Rule{ID: "typo", Name: "Typo", Enabled: true, Definition: json.RawMessage(`{"field":"amount","op":"gt","value":"1","outcome":"blok","score":100}`)}
 	check := New([]domain.Rule{rule}).Check(validRequest())
 	if check.Decision != domain.DecisionReview {
 		t.Fatalf("decision = %q, want review", check.Decision)
@@ -79,7 +78,7 @@ func TestIdempotencyCacheEvictsOldestEntryAtCap(t *testing.T) {
 }
 
 func TestContextAppliesBlockedAccountsDisabledRulesAndThresholds(t *testing.T) {
-	rule := domain.Rule{ID: "score", Name: "Score", Enabled: true, Definition: json.RawMessage(`{"field":"amount","op":"gte","value":1,"outcome":"allow","score":40}`)}
+	rule := domain.Rule{ID: "score", Name: "Score", Enabled: true, Definition: json.RawMessage(`{"field":"amount","op":"gte","value":"1","outcome":"allow","score":40}`)}
 	decisionEngine := New([]domain.Rule{rule})
 
 	review := decisionEngine.CheckWithContext(validRequest(), Context{ReviewThreshold: 40})
@@ -104,7 +103,7 @@ func TestContextAppliesBlockedAccountsDisabledRulesAndThresholds(t *testing.T) {
 
 func TestReplaceRulesValidatesAndInstallsAtomically(t *testing.T) {
 	decisionEngine := New(nil)
-	valid := domain.Rule{ID: "valid", Name: "Valid", Enabled: true, Definition: json.RawMessage(`{"field":"amount","op":"gte","value":1,"outcome":"review"}`)}
+	valid := domain.Rule{ID: "valid", Name: "Valid", Enabled: true, Definition: json.RawMessage(`{"field":"amount","op":"gte","value":"1","outcome":"review"}`)}
 	if err := decisionEngine.ReplaceRules([]domain.Rule{valid}); err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +144,7 @@ func validRequest() domain.TransferCheckRequest {
 	return domain.TransferCheckRequest{IdempotencyKey: "idem-1", MessageType: "pacs.008", Payload: domain.Pacs008Transfer{
 		MessageID: "msg-1", CreationDateTime: time.Date(2026, 9, 21, 0, 0, 0, 0, time.UTC),
 		PaymentIdentification: domain.PaymentIdentification{EndToEndID: "e2e-1"},
-		InstructedAmount:      domain.Money{Amount: 50, Currency: "PHP"},
+		InstructedAmount:      domain.Money{Amount: "50", Currency: "PHP"},
 		DebtorAccount:         domain.AccountRef{ID: "debtor"}, CreditorAccount: domain.AccountRef{ID: "creditor"},
 		DebtorAgent: domain.Agent{BICFI: "DEUTPHMM"}, CreditorAgent: domain.Agent{BICFI: "BOPIPHMM"},
 	}}

@@ -23,10 +23,19 @@ jobs:
         run: |
           for entry in .* *; do
             case "$entry" in
-              .|..|.git|.github|CONTRIBUTING.md|LICENSE|NOTICE|README.md|SECURITY.md|api|cmd|docs|domain|engine|examples|go.mod|go.sum|iso20022|rules) ;;
+              .|..|.git|.github|CONTRIBUTING.md|LICENSE|NOTICE|README.md|SECURITY.md|api|aml|cmd|docs|domain|engine|examples|go.mod|go.sum|iso20022|rules) ;;
               *) echo "unexpected public top-level path: $entry" >&2; exit 1 ;;
             esac
           done
+      - name: Check AML dependency separation
+        shell: bash
+        run: |
+          while read -r dependency; do
+            case "$dependency" in
+              ""|github.com/apache261/Byakugan-core/aml/domain|github.com/apache261/Byakugan-core/aml/scenarios) ;;
+              *) echo "unexpected AML dependency: $dependency" >&2; exit 1 ;;
+            esac
+          done < <(go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./aml/...)
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
       - run: go mod verify
@@ -34,3 +43,16 @@ jobs:
       - name: Build Core API
         run: go build -trimpath -o /tmp/byakugan-core ./cmd/byakugan-core
       - run: go test -mod=readonly ./...
+      - name: Race-check evaluation registries and replay
+        run: go test -race ./engine ./aml/scenarios
+      - name: Build independent consumer examples
+        shell: bash
+        run: |
+          task_workspace=$(mktemp -d)
+          trap 'rm -rf "$task_workspace"' EXIT
+          cd "$task_workspace"
+          GOWORK=off go work init "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/examples/custom-fraud" "$GITHUB_WORKSPACE/examples/custom-aml"
+          for example in custom-fraud custom-aml; do
+            cd "$GITHUB_WORKSPACE/examples/$example"
+            GOWORK="$task_workspace/go.work" go build ./...
+          done

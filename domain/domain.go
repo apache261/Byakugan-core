@@ -3,7 +3,6 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 )
@@ -32,8 +31,8 @@ type AccountRef struct {
 }
 
 type Money struct {
-	Amount   float64 `json:"amount"`
-	Currency string  `json:"currency"`
+	Amount   string `json:"amount"`
+	Currency string `json:"currency"`
 }
 
 type PaymentIdentification struct {
@@ -113,8 +112,8 @@ func ValidateTransfer(req TransferCheckRequest) []string {
 	if strings.TrimSpace(p.PaymentIdentification.EndToEndID) == "" {
 		errs = append(errs, "payload.payment_identification.end_to_end_id is required")
 	}
-	if p.InstructedAmount.Amount <= 0 || math.IsNaN(p.InstructedAmount.Amount) || math.IsInf(p.InstructedAmount.Amount, 0) {
-		errs = append(errs, "payload.instructed_amount.amount must be positive")
+	if _, err := CanonicalAmount(p.InstructedAmount.Amount, p.InstructedAmount.Currency); err != nil {
+		errs = append(errs, "payload.instructed_amount.amount must be a positive decimal within currency scale")
 	}
 	if strings.TrimSpace(p.InstructedAmount.Currency) == "" {
 		errs = append(errs, "payload.instructed_amount.currency is required")
