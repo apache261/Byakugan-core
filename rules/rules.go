@@ -40,9 +40,10 @@ type AccountContext struct {
 // Loaded distinguishes a real zero from metrics that were not supplied.
 type Metrics struct {
 	Loaded                    bool
+	Currency                  string // Currency of all supplied monetary sums.
 	DebtorTransferCount       int
-	DebtorAmountSum           float64
-	CreditorAmountSum         float64
+	DebtorAmountSum           string
+	CreditorAmountSum         string
 	DebtorUniqueCreditorCount int
 	DebtorRepeatedAmountCount int
 	HasPreviousCreditor       bool
@@ -122,6 +123,7 @@ func decodeDefinition(raw json.RawMessage) (Definition, error) {
 	var definition Definition
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
 	if err := decoder.Decode(&definition); err != nil {
 		return Definition{}, err
 	}
@@ -172,6 +174,11 @@ func validateCondition(def Definition) error {
 	if !ok {
 		return fmt.Errorf("unsupported rule field %q", def.Field)
 	}
+	if _, ok := actual.(monetaryValue); ok {
+		// Rule validation has no transfer currency; validate the syntax at the
+		// largest approved scale. Evaluation applies the actual currency scale.
+		actual = moneyValue("0", "KWD", nil)
+	}
 	if _, err := compare(actual, def.Op, def.Value); err != nil {
 		return err
 	}
@@ -217,7 +224,8 @@ func fieldValue(def Definition, req domain.TransferCheckRequest, context Context
 	case "payment_identification.instruction_id", "instruction_id":
 		return p.PaymentIdentification.InstructionID, true
 	case "amount", "instructed_amount.amount":
-		return p.InstructedAmount.Amount, true
+		_, err := domain.CanonicalAmount(p.InstructedAmount.Amount, p.InstructedAmount.Currency)
+		return moneyValue(p.InstructedAmount.Amount, p.InstructedAmount.Currency, err), true
 	case "currency", "instructed_amount.currency":
 		return p.InstructedAmount.Currency, true
 	case "debtor_account.id":
@@ -251,19 +259,19 @@ func fieldValue(def Definition, req domain.TransferCheckRequest, context Context
 		return float64(len(historyWindow(req, context, def))), true
 	case "velocity.debtor_amount_sum":
 		if metrics, ok := metricsForWindow(context, def); ok {
-			return metrics.DebtorAmountSum, true
+			return metricMoney(metrics, p.InstructedAmount.Currency, false, ""), true
 		}
-		return amountSum(req, historyWindow(req, context, def)), true
+		return historyAmount(req, historyWindow(req, context, def), false), true
 	case "velocity.debtor_amount_sum_including_current":
 		if metrics, ok := metricsForWindow(context, def); ok {
-			return metrics.DebtorAmountSum + p.InstructedAmount.Amount, true
+			return metricMoney(metrics, p.InstructedAmount.Currency, false, p.InstructedAmount.Amount), true
 		}
-		return amountSum(req, historyWindow(req, context, def)) + p.InstructedAmount.Amount, true
+		return historyAmount(req, historyWindow(req, context, def), true), true
 	case "velocity.creditor_amount_sum_including_current":
 		if metrics, ok := metricsForWindow(context, def); ok {
-			return metrics.CreditorAmountSum + p.InstructedAmount.Amount, true
+			return metricMoney(metrics, p.InstructedAmount.Currency, true, p.InstructedAmount.Amount), true
 		}
-		return amountSum(req, creditorHistoryWindow(req, context, def)) + p.InstructedAmount.Amount, true
+		return historyAmount(req, creditorHistoryWindow(req, context, def), true), true
 	case "velocity.debtor_unique_creditor_count":
 		if metrics, ok := metricsForWindow(context, def); ok {
 			return float64(metrics.DebtorUniqueCreditorCount), true
@@ -293,6 +301,34 @@ func fieldValue(def Definition, req domain.TransferCheckRequest, context Context
 
 func compare(actual any, op string, expected any) (bool, error) {
 	switch value := actual.(type) {
+	case monetaryValue:
+		if value.err != nil {
+			return false, value.err
+		}
+		want, ok := expected.(string)
+		if !ok {
+			return false, fmt.Errorf("monetary rule value must be a decimal string")
+		}
+		cmp, err := domain.CompareAmounts(value.amount, want, value.currency)
+		if err != nil {
+			return false, err
+		}
+		switch op {
+		case "gt":
+			return cmp > 0, nil
+		case "gte":
+			return cmp >= 0, nil
+		case "lt":
+			return cmp < 0, nil
+		case "lte":
+			return cmp <= 0, nil
+		case "eq":
+			return cmp == 0, nil
+		case "neq":
+			return cmp != 0, nil
+		default:
+			return false, fmt.Errorf("unsupported monetary op %q", op)
+		}
 	case bool:
 		want, err := boolFrom(expected)
 		if err != nil {
@@ -445,14 +481,44 @@ func windowCutoff(now time.Time, def Definition) time.Time {
 	return time.Time{}
 }
 
-func amountSum(req domain.TransferCheckRequest, checks []domain.TransferCheck) float64 {
-	var total float64
+// monetaryValue prevents decimal strings from entering lexical or float comparisons.
+type monetaryValue struct {
+	amount, currency string
+	err              error
+}
+
+func moneyValue(amount, currency string, err error) monetaryValue {
+	return monetaryValue{amount, currency, err}
+}
+func metricAmount(amount string) string {
+	if amount == "" {
+		return "0"
+	}
+	return amount
+}
+func sumMoney(currency string, amounts ...string) monetaryValue {
+	value, err := domain.AddAmounts(currency, amounts...)
+	return moneyValue(value, currency, err)
+}
+func historyAmount(req domain.TransferCheckRequest, checks []domain.TransferCheck, current bool) monetaryValue {
+	currency := req.Payload.InstructedAmount.Currency
+	amounts := []string{}
+	if current {
+		if _, err := domain.CanonicalAmount(req.Payload.InstructedAmount.Amount, currency); err != nil {
+			return moneyValue("", currency, err)
+		}
+		amounts = append(amounts, req.Payload.InstructedAmount.Amount)
+	}
 	for _, check := range checks {
-		if strings.EqualFold(check.Request.Payload.InstructedAmount.Currency, req.Payload.InstructedAmount.Currency) {
-			total += check.Request.Payload.InstructedAmount.Amount
+		amount := check.Request.Payload.InstructedAmount
+		if strings.EqualFold(amount.Currency, currency) {
+			if _, err := domain.CanonicalAmount(amount.Amount, currency); err != nil {
+				return moneyValue("", currency, err)
+			}
+			amounts = append(amounts, amount.Amount)
 		}
 	}
-	return total
+	return sumMoney(currency, amounts...)
 }
 
 func uniqueCreditors(req domain.TransferCheckRequest, checks []domain.TransferCheck) int {
@@ -472,7 +538,7 @@ func repeatedAmountCount(req domain.TransferCheckRequest, checks []domain.Transf
 	count := 0
 	for _, check := range checks {
 		amount := check.Request.Payload.InstructedAmount
-		if amount.Amount == req.Payload.InstructedAmount.Amount && strings.EqualFold(amount.Currency, req.Payload.InstructedAmount.Currency) {
+		if equalAmounts(amount, req.Payload.InstructedAmount) {
 			count++
 		}
 	}
@@ -524,4 +590,29 @@ func requestedExecutionDaysAhead(value string, now time.Time) float64 {
 	}
 	base := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	return parsed.Sub(base).Hours() / 24
+}
+
+func equalAmounts(a, b domain.Money) bool {
+	if !strings.EqualFold(a.Currency, b.Currency) {
+		return false
+	}
+	cmp, err := domain.CompareAmounts(a.Amount, b.Amount, b.Currency)
+	return err == nil && cmp == 0
+}
+
+func metricMoney(metrics Metrics, currency string, creditor bool, current string) monetaryValue {
+	if metrics.Currency != currency {
+		return moneyValue("", currency, fmt.Errorf("aggregate currency must match transfer currency"))
+	}
+	amount := metrics.DebtorAmountSum
+	if creditor {
+		amount = metrics.CreditorAmountSum
+	}
+	if current == "" {
+		return moneyValue(metricAmount(amount), currency, nil)
+	}
+	if _, err := domain.CanonicalAmount(current, currency); err != nil {
+		return moneyValue("", currency, err)
+	}
+	return sumMoney(currency, metricAmount(amount), current)
 }

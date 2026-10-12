@@ -35,6 +35,8 @@ type Options struct {
 // account service, or configuration system. Zero thresholds disable score-based
 // escalation; explicit rule outcomes still apply.
 type Context struct {
+	Facts                     map[string]json.RawMessage
+	PolicyValues              map[string]json.RawMessage
 	Rules                     rules.Context
 	ReviewThreshold           float64
 	BlockThreshold            float64
@@ -58,7 +60,7 @@ func New(ruleSet []domain.Rule) *Engine {
 }
 
 func NewWithOptions(ruleSet []domain.Rule, options Options) *Engine {
-	cloned := append([]domain.Rule(nil), ruleSet...)
+	cloned := cloneRules(ruleSet)
 	sort.SliceStable(cloned, func(i, j int) bool { return cloned[i].Priority < cloned[j].Priority })
 	if options.MaxIdempotencyEntries <= 0 {
 		options.MaxIdempotencyEntries = DefaultMaxIdempotencyEntries
@@ -81,7 +83,7 @@ func DefaultRules() []domain.Rule {
 		},
 		{
 			ID: "community-high-amount", Name: "High amount review", Priority: 100, Enabled: true,
-			Definition: json.RawMessage(`{"field":"amount","op":"gte","value":100000,"outcome":"review","score":50,"reason":"amount meets the community review threshold"}`),
+			Definition: json.RawMessage(`{"field":"amount","op":"gte","value":"100000","outcome":"review","score":50,"reason":"amount meets the community review threshold"}`),
 		},
 	}
 }
@@ -197,7 +199,7 @@ func (e *Engine) evaluate(req domain.TransferCheckRequest, fingerprint string, n
 func (e *Engine) Rules() []domain.Rule {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return append([]domain.Rule(nil), e.rules...)
+	return cloneRules(e.rules)
 }
 
 // ReplaceRules validates and atomically installs a new rule set.
@@ -207,7 +209,7 @@ func (e *Engine) ReplaceRules(ruleSet []domain.Rule) error {
 			return fmt.Errorf("validate rule %q: %w", rule.ID, err)
 		}
 	}
-	cloned := append([]domain.Rule(nil), ruleSet...)
+	cloned := cloneRules(ruleSet)
 	sort.SliceStable(cloned, func(i, j int) bool { return cloned[i].Priority < cloned[j].Priority })
 	e.mu.Lock()
 	e.rules = cloned

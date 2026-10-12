@@ -16,9 +16,18 @@ Rule documents are validated strictly. Unknown fields and trailing JSON are
 rejected so commercial extensions cannot be mistaken for Community rules.
 
 The fraud engine is intentionally public and useful on its own. **Byakugan
-Full** uses the same Core contracts and evaluator, then adds durable operations,
+Full** currently pins v0.2.0 shared primitives and runs private exact evaluators.
+The framework migration will compose the public evaluators with durable operations,
 investigation tooling, advanced signals, and a standalone administration
 dashboard.
+
+The source tree implements framework Phases 1–4: the curated public boundary,
+exact fraud money, stateless fraud extensions and pure AML evaluation. The next release prepares breaking v0.3.0;
+v0.2.0 remains the published contract for existing consumers. Read the
+[exact-money migration guide](docs/migration-v0.3.md) and
+[package boundary](docs/framework-boundary.md),
+[fraud framework](docs/fraud-framework.md) and [AML evaluation](docs/aml-evaluation.md).
+Full cutover and public release remain planned.
 
 ## Core Highlights
 
@@ -30,7 +39,9 @@ dashboard.
   and first-time-beneficiary signals.
 - Account risk tiers, blocked accounts, and per-account disabled rules.
 - Score-based review and block thresholds with explainable rule hits.
-- Thread-safe bounded history and idempotent request replay.
+- Stateless, context-aware custom Go fraud and AML evaluators.
+- Explicit aggregation/failure policies and immutable evaluator registries.
+- Optional thread-safe bounded history and idempotent request replay.
 - Precomputed metric injection for database-backed, high-volume integrations.
 - Atomic runtime rule replacement and strict rejection of unknown rule fields.
 - API-key protection for decision endpoints, plus health and readiness routes.
@@ -42,8 +53,8 @@ dashboard.
 | --- | --- | --- |
 | License and source | Apache-2.0, public | Proprietary, private distribution |
 | Primary use | Embeddable fraud library and lightweight HTTP service | Production fraud operations and AML/CFT platform |
-| JSON and ISO 20022 `pacs.008` intake | Included | Included through Core |
-| Explainable rule DSL and synchronous decisions | Included | Included through Core, with managed rule workflows |
+| JSON and ISO 20022 `pacs.008` intake | Included | Private adapters; Core cutover planned |
+| Explainable rule DSL and synchronous decisions | Included | Private exact evaluator and managed rule workflows |
 | Velocity, beneficiary, route, remittance, and risk-tier rules | In-memory history or caller-provided metrics | Durable aggregate queries backed by PostgreSQL |
 | Idempotency | Bounded in-memory replay | Durable PostgreSQL/Redis-aware processing |
 | Storage | Bring your own, or use bounded memory | PostgreSQL stores and migrations with in-memory development fallback |
@@ -53,9 +64,9 @@ dashboard.
 | Fraud investigations | Decision reasons and rule hits | Cases, priorities, notes, evidence attachments, approvals, and saved views |
 | Advanced fraud signals | Portable deterministic signals | Behavior profiles, network analysis, watchlists, and external/ML scores |
 | Payment-status correlation | Not included | ISO 20022 `pacs.002` intake, correlation, and audit trail |
-| Integrations | Library hooks | Signed webhooks, retries, replay, delivery history, and dead-letter exports |
+| Integrations | Compiled custom evaluator interfaces | Signed webhooks, retries, replay, delivery history, and dead-letter exports |
 | Security and governance | Optional static API keys | Managed API keys, admin sessions, roles, scopes, audit events, and retention controls |
-| AML/CFT | Intentionally separate and not included | Append-only ledger, ingestion, scenarios, screening, alerts, investigations, reports, legal holds, and historical imports |
+| AML/CFT | Separate pure scenarios, custom observations and exact AML contracts | Append-only ledger, ingestion, scenarios, screening, alerts, investigations, reports, legal holds, and historical imports |
 | Deployment | Go binary or embedded package | API, dashboard, PostgreSQL, Redis, migrations, licensing, and deployment assets |
 
 Choose **Core** when you want a transparent engine you can embed and extend.
@@ -103,9 +114,26 @@ The main reusable packages are:
 - `domain`: canonical transfer, rule, hit, and decision contracts.
 - `iso20022`: dependency-free `pacs.008` to canonical-request adapter.
 - `rules`: strict portable DSL validation and contextual evaluation.
-- `engine`: thread-safe decisions, idempotency, history, thresholds, account
-  blocking, per-account rule disabling, and atomic rule replacement.
+- `engine`: stateless fraud framework, explicit policies, optional replay/history,
+  account blocking, rule disabling and atomic rule replacement.
+- `aml/domain`: evaluation transaction/subject contracts, exact decimals and bounded DSL.
+- `aml/scenarios`: pure AML observations and custom evaluator registries.
 - `api`: an optional minimal `net/http` adapter.
+
+For new extensions, use `engine.NewFramework` and its context-aware `Evaluate`
+method; add `engine.NewReplayEngine` only when local history/replay is wanted.
+AML uses separate `aml/scenarios` evaluation and returns observations.
+The independent consumer modules target the planned v0.3.0 release. Before that
+release, run both against source from the Core module root:
+
+```sh
+core_source=$PWD
+framework_workspace=$(mktemp -d)
+(cd "$framework_workspace" && GOWORK=off go work init "$core_source" "$core_source/examples/custom-fraud" "$core_source/examples/custom-aml")
+(cd examples/custom-fraud && GOWORK="$framework_workspace/go.work" go run . < ../transfer.json)
+(cd examples/custom-aml && GOWORK="$framework_workspace/go.work" go run .)
+rm -rf "$framework_workspace"
+```
 
 ## About Byakugan
 
@@ -120,8 +148,8 @@ open-source fraud detection services available to developers. Byakugan Core
 provides a dependency-light foundation that can be studied, extended, and
 integrated without requiring the proprietary dashboard or commercial suite.
 
-Byakugan produces fraud signals only. It does not settle, authorize, reject,
-or hold payments.
+Byakugan fraud evaluation produces signals; AML evaluation produces separate
+observations. Neither settles, authorizes, rejects or holds payments.
 
 ## Run
 
@@ -177,9 +205,9 @@ API details are in [docs/openapi.yaml](docs/openapi.yaml).
 
 ## Byakugan Full
 
-Byakugan Full is for teams that need more than a decision function. It packages
-Core into an operational fraud and AML/CFT system while preserving the same
-explainable rule results and canonical transfer contracts.
+Byakugan Full is for teams that need more than a decision function. It supplies an
+operational fraud and AML/CFT system. Shared evaluator composition is planned;
+Full currently uses private exact fraud and AML evaluators.
 
 Full adds:
 

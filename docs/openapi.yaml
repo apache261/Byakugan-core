@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Byakugan Core API
-  version: 0.2.0
+  version: 0.3.0-dev
   description: Headless synchronous fraud checks. An allow result is not a settlement instruction. Decision endpoints are anonymous when API_KEYS is empty and require X-API-Key when API_KEYS is configured.
 servers:
   - url: http://localhost:8080
@@ -70,9 +70,10 @@ components:
     Money:
       type: object
       additionalProperties: false
+      required: [amount, currency]
       properties:
-        amount: { type: number }
-        currency: { type: string }
+        amount: { type: string, pattern: '^[0-9]+(\.[0-9]+)?$', example: "1250.5", description: Positive exact decimal with at most 18 integer digits and the approved currency scale. }
+        currency: { type: string, enum: [PHP, USD, EUR, GBP, AUD, CAD, SGD, HKD, CNY, JPY, KRW, KWD, BHD, OMR] }
     Agent:
       type: object
       additionalProperties: false
