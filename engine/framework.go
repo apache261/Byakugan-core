@@ -47,6 +47,7 @@ type Policy struct {
 	StopOnError           bool
 	ReplaceReasonsOnError bool
 	IncludeZeroThresholds bool
+	AllowEmptyOutcome     bool // Legacy Full rules may contribute score without an outcome.
 }
 
 func DefaultPolicy() Policy { return Policy{Failure: FailureReview, StopOnError: true} }
@@ -55,7 +56,7 @@ func DefaultPolicy() Policy { return Policy{Failure: FailureReview, StopOnError:
 // stage. Full supplies prefiltered rules and configured thresholds and performs
 // account admission, durable replay and data retrieval before calling Core.
 func FullCompatibilityPolicy() Policy {
-	return Policy{Failure: FailureReview, StopOnBlock: true, StopOnError: true, ReplaceReasonsOnError: true, IncludeZeroThresholds: true}
+	return Policy{Failure: FailureReview, StopOnBlock: true, StopOnError: true, ReplaceReasonsOnError: true, IncludeZeroThresholds: true, AllowEmptyOutcome: true}
 }
 
 // Result deliberately has no generated identity, replay key, history or storage.
@@ -257,7 +258,7 @@ func (f *Framework) Evaluate(ctx context.Context, req domain.TransferCheckReques
 			return result, errors.Join(failures...)
 		}
 		if err == nil {
-			err = validateHits(hits, result.Score)
+			err = validateHits(hits, result.Score, policy.AllowEmptyOutcome)
 		}
 		if err != nil {
 			// Full compatibility exposes the original rule error as its sole reason.
@@ -306,16 +307,20 @@ func appendReason(reasons []string, reason string) []string {
 	}
 	return append(reasons, reason)
 }
-func validateHits(hits []domain.RuleHit, initial float64) error {
+func validateHits(hits []domain.RuleHit, initial float64, allowEmptyOutcome bool) error {
 	score := initial
 	for _, hit := range hits {
 		if !validID(hit.RuleID) {
 			return errors.New("rule hit requires an explicit ID")
 		}
-		switch hit.Outcome {
-		case domain.DecisionAllow, domain.DecisionReview, domain.DecisionBlock:
-		default:
-			return fmt.Errorf("invalid hit outcome %q", hit.Outcome)
+		if hit.Outcome == "" && allowEmptyOutcome {
+			// Score-only legacy rule; escalation is applied by configured thresholds.
+		} else {
+			switch hit.Outcome {
+			case domain.DecisionAllow, domain.DecisionReview, domain.DecisionBlock:
+			default:
+				return fmt.Errorf("invalid hit outcome %q", hit.Outcome)
+			}
 		}
 		score += hit.Score
 		if math.IsNaN(score) || math.IsInf(score, 0) {

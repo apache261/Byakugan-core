@@ -244,3 +244,16 @@ func TestFrameworkConcurrentEvaluationAndReplacement(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestScoreOnlyHitRequiresCompatibilityPolicy(t *testing.T) {
+	registration := custom("score-only", 1, "", 60)
+	conservative := framework(t, nil, []Registration{registration}, DefaultPolicy())
+	if got, err := conservative.Evaluate(context.Background(), validRequest(), Context{ReviewThreshold: 50, BlockThreshold: 100}); err == nil || len(got.RuleHits) != 0 {
+		t.Fatalf("default accepted empty outcome: %+v %v", got, err)
+	}
+	compatible := framework(t, nil, []Registration{registration}, FullCompatibilityPolicy())
+	got, err := compatible.Evaluate(context.Background(), validRequest(), Context{ReviewThreshold: 50, BlockThreshold: 100})
+	if err != nil || got.Decision != domain.DecisionReview || got.Score != 60 || len(got.RuleHits) != 1 || got.RuleHits[0].Outcome != "" {
+		t.Fatalf("score-only compatibility: %+v %v", got, err)
+	}
+}
