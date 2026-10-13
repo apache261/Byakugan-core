@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08">
+  <FIToFICstmrCdtTrf>
+    <GrpHdr>
+      <MsgId>MSG-XML-001</MsgId>
+      <CreDtTm>2026-09-21T08:00:00Z</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <SttlmInf><SttlmMtd>CLRG</SttlmMtd></SttlmInf>
+    </GrpHdr>
+    <CdtTrfTxInf>
+      <PmtId>
+        <InstrId>INSTR-001</InstrId>
+        <EndToEndId>E2E-XML-001</EndToEndId>
+        <TxId>TX-XML-001</TxId>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="PHP">1250.50</IntrBkSttlmAmt>
+      <Dbtr><Nm>Example Debtor</Nm></Dbtr>
+      <DbtrAcct><Id><Othr><Id>debtor-001</Id></Othr></Id></DbtrAcct>
+      <DbtrAgt><FinInstnId><BICFI>DEUTPHMM</BICFI></FinInstnId></DbtrAgt>
+      <CdtrAgt><FinInstnId><BICFI>BOPIPHMM</BICFI></FinInstnId></CdtrAgt>
+      <Cdtr><Nm>Example Creditor</Nm></Cdtr>
+      <CdtrAcct><Id><Othr><Id>creditor-001</Id></Othr></Id></CdtrAcct>
+      <RmtInf><Ustrd>Synthetic invoice 001</Ustrd></RmtInf>
+    </CdtTrfTxInf>
+  </FIToFICstmrCdtTrf>
+</Document>

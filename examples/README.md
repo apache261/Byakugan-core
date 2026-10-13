@@ -7,6 +7,7 @@ these examples is synthetic.
 | Guide | What you will build |
 | --- | --- |
 | [Getting started](getting-started.md) | A new Go module that reads a transfer and prints a fraud result |
+| [Your own ISO 20022 XML](iso20022-convert/README.md) | Convert a `pacs.008` XML file into a canonical Byakugan JSON payload |
 | [Your own rules](own-rules.md) | An exact amount rule, nested conditions, and runtime rule replacement |
 | [Custom fraud evaluator](custom-fraud/README.md) | Go logic that turns an application fact into an explainable rule hit |
 | [Supplied aggregates](supplied-aggregates/README.md) | Evaluation using exact totals supplied by your application |
@@ -25,10 +26,11 @@ source checkout), run these commands against the released v0.3.0 module:
 (cd examples/custom-fraud && GOWORK=off go mod download github.com/apache261/Byakugan-core && GOWORK=off go run . < ../transfer.json)
 (cd examples/custom-aml && GOWORK=off go mod download github.com/apache261/Byakugan-core && GOWORK=off go run .)
 go run ./examples/supplied-aggregates < examples/transfer.json
+go run ./examples/iso20022-convert < examples/iso20022-convert/transfer.xml
 ```
 
 The fraud and AML examples are independent consumer modules with their own
-`go.mod`; the aggregate example belongs to the Core module.
+`go.mod`; the aggregate and XML conversion examples belong to the Core module.
 
 To run the independent examples against edited local Core source instead of
 the release, create a temporary workspace from the Core root:

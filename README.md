@@ -46,6 +46,7 @@ pure AML evaluation. v0.2.0 remains available for existing consumers. Read the
 
 Start with the [step-by-step examples](examples/README.md):
 [import and evaluate a transfer](examples/getting-started.md),
+[convert your own ISO 20022 XML](examples/iso20022-convert/README.md),
 [write your own rules](examples/own-rules.md),
 [implement a custom Go evaluator](examples/custom-fraud/README.md),
 [supply database aggregates](examples/supplied-aggregates/README.md), or
