@@ -1,4 +1,4 @@
-# Exact-money migration for the next Core release
+# Exact-money Migration for Core v0.3.0
 
 v0.3.0 introduces the breaking contracts below. Existing
 v0.2.0 consumers keep their existing Go/JSON contracts until they upgrade.

@@ -15,10 +15,8 @@ workloads where an application supplies its own durable infrastructure.
 Rule documents are validated strictly. Unknown fields and trailing JSON are
 rejected so commercial extensions cannot be mistaken for Community rules.
 
-The fraud engine is public and independently reusable. **Byakugan Full** composes
-Core's exact fraud and pure AML evaluators with durable operations, advanced
-signals, investigations, and its standalone dashboard. Full keeps all operational
-authority and durable replay outside Core.
+Core provides reusable fraud and AML evaluation contracts. Applications supply
+their own data, integrations, persistence, and operational workflows.
 
 The v0.3.0 release introduces exact fraud money, stateless fraud extensions and
 pure AML evaluation. v0.2.0 remains available for existing consumers. Read the
@@ -43,32 +41,6 @@ pure AML evaluation. v0.2.0 remains available for existing consumers. Read the
 - Atomic runtime rule replacement and strict rejection of unknown rule fields.
 - API-key protection for decision endpoints, plus health and readiness routes.
 - Apache License 2.0 with no proprietary runtime dependency.
-
-## Core or Full?
-
-| Capability | Byakugan Core | Byakugan Full |
-| --- | --- | --- |
-| License and source | Apache-2.0, public | Proprietary, private distribution |
-| Primary use | Embeddable fraud library and lightweight HTTP service | Production fraud operations and AML/CFT platform |
-| JSON and ISO 20022 `pacs.008` intake | Included | Private adapters with exact Core projections |
-| Explainable rule DSL and synchronous decisions | Included | Private exact evaluator and managed rule workflows |
-| Velocity, beneficiary, route, remittance, and risk-tier rules | In-memory history or caller-provided metrics | Durable aggregate queries backed by PostgreSQL |
-| Idempotency | Bounded in-memory replay | Durable PostgreSQL/Redis-aware processing |
-| Storage | Bring your own, or use bounded memory | PostgreSQL stores and migrations with in-memory development fallback |
-| Cache and multi-replica readiness | Bring your own | Redis integration and operational readiness checks |
-| Account and configuration management | Library policy inputs | Managed accounts, scoped rules, runtime configuration, and imports |
-| Operator interface | Not included | Independently deployable W2UI administration dashboard |
-| Fraud investigations | Decision reasons and rule hits | Cases, priorities, notes, evidence attachments, approvals, and saved views |
-| Advanced fraud signals | Portable deterministic signals | Behavior profiles, network analysis, watchlists, and external/ML scores |
-| Payment-status correlation | Not included | ISO 20022 `pacs.002` intake, correlation, and audit trail |
-| Integrations | Compiled custom evaluator interfaces | Signed webhooks, retries, replay, delivery history, and dead-letter exports |
-| Security and governance | Optional static API keys | Managed API keys, admin sessions, roles, scopes, audit events, and retention controls |
-| AML/CFT | Separate pure scenarios, custom observations and exact AML contracts | Append-only ledger, ingestion, scenarios, screening, alerts, investigations, reports, legal holds, and historical imports |
-| Deployment | Go binary or embedded package | API, dashboard, PostgreSQL, Redis, migrations, licensing, and deployment assets |
-
-Choose **Core** when you want a transparent engine you can embed and extend.
-Choose **Full** when you also need durable operations, analysts and casework,
-governed administration, AML/CFT workflows, and production integrations.
 
 ## Use as a Library
 
@@ -151,7 +123,7 @@ decision signals.
 The project was created in response to the limited number of approachable
 open-source fraud detection services available to developers. Byakugan Core
 provides a dependency-light foundation that can be studied, extended, and
-integrated without requiring the proprietary dashboard or commercial suite.
+integrated into applications with caller-supplied infrastructure.
 
 Byakugan fraud evaluation produces signals; AML evaluation produces separate
 observations. Neither settles, authorizes, rejects or holds payments.
@@ -210,36 +182,10 @@ instruction and must not be treated as one.
 
 API details are in [docs/openapi.yaml](docs/openapi.yaml).
 
-## Byakugan Full
-
-Byakugan Full is for teams that need more than a decision function. It supplies an
-operational fraud and AML/CFT system. Full composes Core's exact fraud and pure
-AML evaluators with private integrations and durable workflows.
-
-Full adds:
-
-- a separate, independently deployable fraud-operations dashboard;
-- PostgreSQL persistence, Redis caching, migrations, readiness gates, exports,
-  audit trails, and retention workflows;
-- managed accounts, rules, configurations, API keys, administrators, roles,
-  sessions, and approval controls;
-- fraud cases with notes, attachments, prioritization, metrics, saved views,
-  and manual-review decisions;
-- behavior profiling, network/link signals, watchlists, and governed external
-  model-score ingestion;
-- signed webhook delivery with policy controls, retries, replay, delivery
-  evidence, and dead-letter reporting;
-- ISO 20022 `pacs.002` payment-status correlation independent of fraud decisions;
-- a separate AML/CFT ledger with transaction ingestion, immutable scenario and
-  policy versions, screening evidence, monitoring jobs, alerts, investigations,
-  four-eyes reports, legal holds, retention, and controlled historical imports;
-- offline commercial licensing and production deployment assets.
-
-Core remains the reusable fraud engine; Full supplies the private operational
-and compliance layers around it. For Full edition access, dashboard inquiries,
-integration planning, or commercial support, contact
-[lynolibarra@gmail.com](mailto:lynolibarra@gmail.com).
-
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## Core or Full?
+
+[Compare editions and explore Byakugan Full](readmepro.md).

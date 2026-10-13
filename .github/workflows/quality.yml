@@ -23,7 +23,7 @@ jobs:
         run: |
           for entry in .* *; do
             case "$entry" in
-              .|..|.git|.github|CONTRIBUTING.md|LICENSE|NOTICE|README.md|SECURITY.md|api|aml|cmd|docs|domain|engine|examples|go.mod|go.sum|iso20022|rules) ;;
+              .|..|.git|.github|CONTRIBUTING.md|LICENSE|NOTICE|README.md|readmepro.md|SECURITY.md|api|aml|cmd|docs|domain|engine|examples|go.mod|go.sum|iso20022|rules) ;;
               *) echo "unexpected public top-level path: $entry" >&2; exit 1 ;;
             esac
           done
