@@ -194,6 +194,14 @@ API details are in [docs/openapi.yaml](docs/openapi.yaml).
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
+## Research and evidence
+
+Read the [research basis](docs/research.md),
+[annotated studies and standards](docs/research-references.md), and
+[configuration validation guide](docs/research-validation.md).
+These documents connect published findings to implemented Core capabilities
+and distinguish reported research evidence from unvalidated example thresholds.
+
 ## Core or Full?
 
 [Compare editions and explore Byakugan Full](readmepro.md).
