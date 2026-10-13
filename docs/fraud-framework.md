@@ -86,7 +86,23 @@ fixtures; new extensions should use `Framework` and optionally `ReplayEngine`.
 ## Independent consumer
 
 `examples/custom-fraud` is an independent module with only public imports and
-no committed replacement. Its v0.3.0 requirement targets the future release.
-Before publication, run it in a temporary workspace against Core source. From
+no committed replacement. It pins v0.3.0 and can run against the released module.
+For source development, run it in a temporary workspace against Core source. From
 the Full repository, `bash scripts/framework/verify-examples.sh` builds and runs
 both independent fraud and AML consumers against source or an exported snapshot.
+
+## Application DSL extensions
+
+`rules.EvaluateWithLeaves` shares portable fields and boolean short-circuiting
+with a caller-supplied leaf evaluator. Return `handled=false` to delegate a leaf
+to the portable evaluator. The application owns validation of its additional
+fields and registers this logic through `engine.Evaluator`. Callbacks must be
+safe for concurrent evaluation; propagate errors rather than treating missing
+required facts as a successful match. `rules.CompareValue` compares supplied
+facts using the same operators; monetary facts require decimal strings and an
+explicit currency. The strict public `rules.Validate` and default DSL intake
+continue to reject unrecognized fields.
+
+Full compatibility permits legacy score-only hits with an empty outcome. Such
+hits contribute score and reasons; configured thresholds decide escalation.
+Other policies reject empty outcomes.

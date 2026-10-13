@@ -61,6 +61,45 @@ type Context struct {
 	Now             time.Time
 }
 
+// LeafEvaluator supplies application-specific leaf conditions. handled=false
+// delegates to the portable DSL. Callbacks must be safe for concurrent calls.
+type LeafEvaluator func(Definition) (matched, handled bool, err error)
+
+// CompareValue applies the portable comparison semantics to a supplied fact.
+// Monetary facts must be exact decimal strings with an explicit currency.
+func CompareValue(actual any, op string, expected any, currency string) (bool, error) {
+	if currency != "" {
+		amount, ok := actual.(string)
+		if !ok {
+			return false, fmt.Errorf("monetary fact must be a decimal string")
+		}
+		actual = moneyValue(amount, currency, nil)
+	}
+	return compare(actual, op, expected)
+}
+
+// EvaluateWithLeaves allows an application evaluator to extend the DSL without
+// duplicating boolean traversal or portable fields. Registration and validation
+// of custom conditions remain the caller's responsibility.
+func EvaluateWithLeaves(rule domain.Rule, req domain.TransferCheckRequest, data Context, leaf LeafEvaluator) (domain.RuleHit, bool, error) {
+	definition, err := decodeDefinition(rule.Definition)
+	if err != nil {
+		return domain.RuleHit{}, false, fmt.Errorf("invalid rule definition: %w", err)
+	}
+	if data.Now.IsZero() {
+		data.Now = time.Now().UTC()
+	}
+	matched, err := evaluateLeaves(definition, req, data, leaf)
+	if err != nil || !matched {
+		return domain.RuleHit{}, matched, err
+	}
+	reason := definition.Reason
+	if reason == "" {
+		reason = rule.Name
+	}
+	return domain.RuleHit{RuleID: rule.ID, RuleName: rule.Name, Outcome: definition.Outcome, Score: definition.Score, Reason: reason}, true, nil
+}
+
 func Evaluate(rule domain.Rule, req domain.TransferCheckRequest) (domain.RuleHit, bool, error) {
 	return EvaluateWithContext(rule, req, Context{})
 }
@@ -186,9 +225,13 @@ func validateCondition(def Definition) error {
 }
 
 func evaluate(def Definition, req domain.TransferCheckRequest, context Context) (bool, error) {
+	return evaluateLeaves(def, req, context, nil)
+}
+
+func evaluateLeaves(def Definition, req domain.TransferCheckRequest, context Context, leaf LeafEvaluator) (bool, error) {
 	if len(def.All) > 0 {
 		for _, child := range def.All {
-			matched, err := evaluate(child, req, context)
+			matched, err := evaluateLeaves(child, req, context, leaf)
 			if err != nil || !matched {
 				return matched, err
 			}
@@ -197,7 +240,7 @@ func evaluate(def Definition, req domain.TransferCheckRequest, context Context) 
 	}
 	if len(def.Any) > 0 {
 		for _, child := range def.Any {
-			matched, err := evaluate(child, req, context)
+			matched, err := evaluateLeaves(child, req, context, leaf)
 			if err != nil {
 				return false, err
 			}
@@ -206,6 +249,12 @@ func evaluate(def Definition, req domain.TransferCheckRequest, context Context) 
 			}
 		}
 		return false, nil
+	}
+	if leaf != nil {
+		matched, handled, err := leaf(def)
+		if handled || err != nil {
+			return matched, err
+		}
 	}
 	actual, ok := fieldValue(def, req, context)
 	if !ok {

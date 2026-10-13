@@ -9,7 +9,8 @@ workers, alerts, investigations, reports, authorization or protected storage.
 
 AML evaluation produces observations and evidence references. It never returns
 `allow`, `review` or `block`, writes a ledger/alert, or changes a fraud result.
-Full continues using its private AML evaluator until framework Phase 5.
+Full simulation and monitoring workers consume this public evaluator through
+private adapters; operational authority remains with Full.
 
 ## Canonical inputs
 
@@ -93,13 +94,13 @@ storage and evidence is sorted. The first error stops execution and returns
 `Complete=false` with any prior observations; cancelled callbacks cannot produce
 a complete result. The framework retains no evaluation/replay/persistence state.
 
-`examples/custom-aml` is an independent public-only module targeting the future
-v0.3.0 release. Before publication, use a temporary Go workspace against source
-as described in [the migration guide](migration-v0.3.md). The example supplies
+`examples/custom-aml` is an independent public-only module pinning
+v0.3.0. Run it against the released module, or use a temporary Go workspace for
+source development, as described in [the migration guide](migration-v0.3.md). The example supplies
 synthetic facts, exact policy values and evidence without private integrations.
 
 The public suite includes the existing pure scenario family fixtures. The Full
 repository's `scripts/framework/verify-aml-parity.sh` additionally compares
 complete observations and prepared version hashes through public contracts for
 exact amounts, missing inputs, boolean conditions, late data and evidence order.
-The private implementation remains intact for the later cutover.
+Full retains its operational orchestration and delegates pure evaluation to Core.

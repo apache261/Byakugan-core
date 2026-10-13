@@ -15,19 +15,16 @@ workloads where an application supplies its own durable infrastructure.
 Rule documents are validated strictly. Unknown fields and trailing JSON are
 rejected so commercial extensions cannot be mistaken for Community rules.
 
-The fraud engine is intentionally public and useful on its own. **Byakugan
-Full** currently pins v0.2.0 shared primitives and runs private exact evaluators.
-The framework migration will compose the public evaluators with durable operations,
-investigation tooling, advanced signals, and a standalone administration
-dashboard.
+The fraud engine is public and independently reusable. **Byakugan Full** composes
+Core's exact fraud and pure AML evaluators with durable operations, advanced
+signals, investigations, and its standalone dashboard. Full keeps all operational
+authority and durable replay outside Core.
 
-The source tree implements framework Phases 1–4: the curated public boundary,
-exact fraud money, stateless fraud extensions and pure AML evaluation. The next release prepares breaking v0.3.0;
-v0.2.0 remains the published contract for existing consumers. Read the
-[exact-money migration guide](docs/migration-v0.3.md) and
+The v0.3.0 release introduces exact fraud money, stateless fraud extensions and
+pure AML evaluation. v0.2.0 remains available for existing consumers. Read the
+[breaking migration guide](docs/migration-v0.3.md),
 [package boundary](docs/framework-boundary.md),
 [fraud framework](docs/fraud-framework.md) and [AML evaluation](docs/aml-evaluation.md).
-Full cutover and public release remain planned.
 
 ## Core Highlights
 
@@ -53,7 +50,7 @@ Full cutover and public release remain planned.
 | --- | --- | --- |
 | License and source | Apache-2.0, public | Proprietary, private distribution |
 | Primary use | Embeddable fraud library and lightweight HTTP service | Production fraud operations and AML/CFT platform |
-| JSON and ISO 20022 `pacs.008` intake | Included | Private adapters; Core cutover planned |
+| JSON and ISO 20022 `pacs.008` intake | Included | Private adapters with exact Core projections |
 | Explainable rule DSL and synchronous decisions | Included | Private exact evaluator and managed rule workflows |
 | Velocity, beneficiary, route, remittance, and risk-tier rules | In-memory history or caller-provided metrics | Durable aggregate queries backed by PostgreSQL |
 | Idempotency | Bounded in-memory replay | Durable PostgreSQL/Redis-aware processing |
@@ -123,8 +120,16 @@ The main reusable packages are:
 For new extensions, use `engine.NewFramework` and its context-aware `Evaluate`
 method; add `engine.NewReplayEngine` only when local history/replay is wanted.
 AML uses separate `aml/scenarios` evaluation and returns observations.
-The independent consumer modules target the planned v0.3.0 release. Before that
-release, run both against source from the Core module root:
+The independent consumer modules pin v0.3.0. Run them against the released
+module from the Core repository root:
+
+```sh
+(cd examples/custom-fraud && GOWORK=off go mod download github.com/apache261/Byakugan-core && GOWORK=off go run . < ../transfer.json)
+(cd examples/custom-aml && GOWORK=off go mod download github.com/apache261/Byakugan-core && GOWORK=off go run .)
+go run ./examples/supplied-aggregates < examples/transfer.json
+```
+
+To test changes against local source, use a temporary workspace:
 
 ```sh
 core_source=$PWD
@@ -169,9 +174,11 @@ bounded FIFO eviction and holds 10,000 key-and-payload results by default; set
 Decision history is also in memory and retains 10,000 non-replayed checks by
 default; set `MAX_HISTORY_ENTRIES` to change the cap.
 
+Set `CORE_API_KEY` to your local test key before running:
+
 ```sh
-API_KEYS=local-secret go run ./cmd/byakugan-core
-curl -H 'X-API-Key: local-secret' -H 'Content-Type: application/json' \
+API_KEYS="$CORE_API_KEY" go run ./cmd/byakugan-core
+curl -H "X-API-Key: $CORE_API_KEY" -H 'Content-Type: application/json' \
   --data @examples/transfer.json http://localhost:8080/v1/transfer-checks
 ```
 
@@ -206,8 +213,8 @@ API details are in [docs/openapi.yaml](docs/openapi.yaml).
 ## Byakugan Full
 
 Byakugan Full is for teams that need more than a decision function. It supplies an
-operational fraud and AML/CFT system. Shared evaluator composition is planned;
-Full currently uses private exact fraud and AML evaluators.
+operational fraud and AML/CFT system. Full composes Core's exact fraud and pure
+AML evaluators with private integrations and durable workflows.
 
 Full adds:
 

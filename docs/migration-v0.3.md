@@ -1,6 +1,6 @@
 # Exact-money migration for the next Core release
 
-These source changes prepare v0.3.0. No release tag has been published. Existing
+v0.3.0 introduces the breaking contracts below. Existing
 v0.2.0 consumers keep their existing Go/JSON contracts until they upgrade.
 
 - `domain.Money.Amount` changes from `float64` to `string`.
@@ -44,21 +44,33 @@ go run ./examples/supplied-aggregates < examples/transfer.json
 It prints `review [exact sum meets threshold]` for the supplied example, where
 1250.5 plus 0.1 reaches the exact 1250.6 threshold.
 
-## Full preparation and later cutover
+## Full cutover and rollback
 
-Full's HTTP and persisted database contracts remain unchanged in this phase.
-Full still pins v0.2.0. The private source tree prepares an exact adapter template
-and verifies it with a temporary Go workspace/overlay against this Core source.
-The template directly copies decimal strings in both directions; it introduces
-no lossy conversion. The existing v0.2.0 projection remains solely for legacy
-compatibility until the Phase 5 cutover. It is not the private fraud evaluator.
+Full's HTTP/JSON and persisted database contracts remain unchanged. Its exact
+adapter copies monetary strings directly; Core handles portable rules and
+aggregation through `engine.FullCompatibilityPolicy`. Full prepares account
+facts, currency-bound aggregates and private behavior/network/ML signals.
+`rules.EvaluateWithLeaves` lets a private evaluator supply custom leaf conditions
+while Core retains boolean traversal and portable comparison semantics.
+`rules.CompareValue` accepts exact monetary facts with an explicit currency.
+Legacy Full numeric monetary rule thresholds are converted directly from
+`json.Number` to decimal text by its private adapter; public DSL intake still
+requires decimal strings.
 
-Phase 5 activates the exact adapter, removes the legacy float projection and
-replaces duplicate portable evaluators after compatibility fixtures pass.
-Phase 6 publishes the separately authorized tag and pins Full to the exact
-released version. Do not commit a local replacement or change Full's production
-module pin as part of Phase 2. Rolling back an upgrade requires restoring the
-v0.2.0 adapter and JSON producer contract together, not parsing strings as floats.
+Full's compatibility policy preserves stable priorities, first block/error,
+replacement error reasons, zero thresholds and legacy score-only hits with an
+empty outcome. Conservative default policies continue to reject empty outcomes.
+AML simulation and workers use Core's context-aware pure scenario evaluator;
+ledger operations, alert persistence and authorization stay private.
+
+The release operator must authorize publication separately, publish the reviewed
+history-free snapshot as v0.3.0, and then pin Full to that exact tag. Validate
+Full with `GOWORK=off` against the downloaded release before declaring cutover
+complete. No committed local replacement is required.
+
+Rollback restores the pre-cutover Full commit and its v0.2.0 pin together.
+Library consumers reverting to v0.2.0 must restore their Go/JSON amount producers
+at the same time. Database rollback is unnecessary for this migration.
 
 ## Fraud and AML extension APIs
 
@@ -68,11 +80,10 @@ explicit registry IDs, stable ordering and aggregation/failure policies.
 the legacy adapter. See [fraud-framework.md](fraud-framework.md).
 `aml/domain` and `aml/scenarios` provide separate pure AML contracts/observations,
 bounded scenario preparation and custom evaluators; see
-[aml-evaluation.md](aml-evaluation.md). None of these source additions cuts over
-Full or changes its current pin.
+[aml-evaluation.md](aml-evaluation.md). Full consumes these public contracts without invoking Core replay.
 
 The independent `examples/custom-fraud` and `examples/custom-aml` modules require
-the future v0.3.0 tag. While it is unpublished, compile/run them with a temporary
-Go workspace using the commands in [the README](../README.md). They import only
+the v0.3.0 tag. Run them against the released module, or use a temporary
+Go workspace for source development, with the commands in [the README](../README.md). They import only
 public packages, have no committed replacements, and are verified against both
 the source module and history-free exported snapshots.

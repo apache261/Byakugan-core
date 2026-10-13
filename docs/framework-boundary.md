@@ -2,8 +2,9 @@
 
 The source tree implements the documentation/boundary baseline, exact fraud
 money, stateless custom fraud evaluation and pure public AML evaluation.
-Full still pins Core v0.2.0 and runs its private exact fraud/AML evaluators.
-The next Core release is a breaking v0.3.0; source changes are not a published tag.
+Full uses exact adapters and the public fraud/AML evaluators; its durable
+operations and private integrations remain outside Core.
+Core v0.3.0 is a breaking release; v0.2.0 remains available to existing consumers.
 
 | Public package | Approved dependencies and authority |
 | --- | --- |
