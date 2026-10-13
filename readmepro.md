@@ -17,6 +17,9 @@ Byakugan Full includes:
   prioritization, saved views, metrics, and manual-review decisions.
 - **Advanced fraud signals:** behavior profiles, network and link analysis,
   watchlists, and governed ingestion of external model scores.
+- **Pro feature — Cloudflare Clef decision support:** optional dashboard-controlled
+  shadow advice or review-only escalation, with persisted evidence and metrics.
+  Disabled by default; provider failures retain deterministic decisions.
 - **AML/CFT workflows:** a separate transaction ledger, versioned scenarios and
   policies, screening evidence, monitoring jobs, alerts, investigations,
   reports with separate reviewers and approvers, legal holds, and historical imports.
@@ -41,6 +44,7 @@ Byakugan Full includes:
 | Operator interface | Not included | Independently deployable W2UI administration dashboard |
 | Fraud investigations | Decision reasons and rule hits | Cases, priorities, notes, evidence attachments, approvals, and saved views |
 | Advanced fraud signals | Portable deterministic signals | Behavior profiles, network analysis, watchlists, and external/ML scores |
+| Cloudflare Clef decision support (Pro) | Not bundled | Optional shadow advice or review-only escalation, dashboard controls, evidence, and metrics |
 | Payment-status correlation | Not included | ISO 20022 `pacs.002` intake, correlation, and audit trail |
 | Integrations | Compiled custom evaluator interfaces | Signed webhooks, retries, replay, delivery history, and dead-letter exports |
 | Security and governance | Optional static API keys | Managed API keys, admin sessions, roles, scopes, audit events, and retention controls |
