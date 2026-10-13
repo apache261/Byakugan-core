@@ -44,6 +44,13 @@ pure AML evaluation. v0.2.0 remains available for existing consumers. Read the
 
 ## Use as a Library
 
+Start with the [step-by-step examples](examples/README.md):
+[import and evaluate a transfer](examples/getting-started.md),
+[write your own rules](examples/own-rules.md),
+[implement a custom Go evaluator](examples/custom-fraud/README.md),
+[supply database aggregates](examples/supplied-aggregates/README.md), or
+[create separate AML observations](examples/custom-aml/README.md).
+
 ```go
 package main
 
