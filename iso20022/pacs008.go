@@ -1,6 +1,7 @@
 package iso20022
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -28,9 +29,10 @@ type transferMessage struct {
 	Transfers   []transfer  `xml:"CdtTrfTxInf"`
 }
 type groupHeader struct {
-	MessageID        string `xml:"MsgId"`
-	CreationDateTime string `xml:"CreDtTm"`
-	SettlementDate   string `xml:"IntrBkSttlmDt"`
+	NumberOfTransactions string `xml:"NbOfTxs"`
+	MessageID            string `xml:"MsgId"`
+	CreationDateTime     string `xml:"CreDtTm"`
+	SettlementDate       string `xml:"IntrBkSttlmDt"`
 }
 type transfer struct {
 	PaymentID        paymentID  `xml:"PmtId"`
@@ -80,14 +82,21 @@ type remittance struct {
 	Unstructured []string `xml:"Ustrd"`
 }
 
-// ParsePacs008 maps the first credit-transfer record to the public canonical request.
+// ParsePacs008 accepts one complete pacs.008.001.08 Document with one transfer.
+// It rejects oversized, ambiguous, unsupported, and trailing XML input.
 func ParsePacs008(r io.Reader, idempotencyKey string) (domain.TransferCheckRequest, error) {
 	message, header, namespace, err := decode(r)
 	if err != nil {
 		return domain.TransferCheckRequest{}, err
 	}
-	if len(message.Transfers) == 0 {
-		return domain.TransferCheckRequest{}, fmt.Errorf("pacs.008 xml missing CdtTrfTxInf")
+	if len(message.Transfers) != 1 {
+		return domain.TransferCheckRequest{}, fmt.Errorf("pacs.008 requires exactly one CdtTrfTxInf")
+	}
+	if message.GroupHeader.NumberOfTransactions != "" && message.GroupHeader.NumberOfTransactions != "1" {
+		return domain.TransferCheckRequest{}, fmt.Errorf("pacs.008 group transaction count must be one")
+	}
+	if header.MessageDefID != "" && header.MessageDefID != "pacs.008.001.08" {
+		return domain.TransferCheckRequest{}, fmt.Errorf("unsupported pacs.008 message definition")
 	}
 	tx := message.Transfers[0]
 	transferAmount := tx.InterbankAmount
@@ -102,7 +111,7 @@ func ParsePacs008(r io.Reader, idempotencyKey string) (domain.TransferCheckReque
 	if err != nil {
 		return domain.TransferCheckRequest{}, fmt.Errorf("invalid pacs.008 CreDtTm")
 	}
-	return domain.TransferCheckRequest{IdempotencyKey: strings.TrimSpace(idempotencyKey), MessageType: "pacs.008", Payload: domain.Pacs008Transfer{
+	request := domain.TransferCheckRequest{IdempotencyKey: strings.TrimSpace(idempotencyKey), MessageType: "pacs.008", Payload: domain.Pacs008Transfer{
 		MessageDefinitionID: messageDefinition(header.MessageDefID, namespace), SchemaNamespace: namespace,
 		MessageID: first(message.GroupHeader.MessageID, header.BusinessMsgID), CreationDateTime: createdAt,
 		PaymentIdentification: domain.PaymentIdentification{InstructionID: strings.TrimSpace(tx.PaymentID.InstructionID), EndToEndID: strings.TrimSpace(tx.PaymentID.EndToEndID), TransactionID: strings.TrimSpace(tx.PaymentID.TransactionID), ClearingSystemReference: strings.TrimSpace(tx.PaymentID.ClearingReference)},
@@ -110,13 +119,31 @@ func ParsePacs008(r io.Reader, idempotencyKey string) (domain.TransferCheckReque
 		Debtor:                domain.Party{Name: strings.TrimSpace(tx.Debtor.Name)}, DebtorAccount: accountRef(tx.DebtorAccount), DebtorAgent: agentRef(firstAgent(tx.DebtorAgent, tx.InstructingAgent, agentFrom(header.From.FinancialInstitution.FinancialInstitution))),
 		Creditor: domain.Party{Name: strings.TrimSpace(tx.Creditor.Name)}, CreditorAccount: accountRef(tx.CreditorAccount), CreditorAgent: agentRef(firstAgent(tx.CreditorAgent, tx.InstructedAgent, agentFrom(header.To.FinancialInstitution.FinancialInstitution))),
 		RemittanceInformation: strings.TrimSpace(strings.Join(tx.Remittance.Unstructured, " ")), InterbankSettlementDate: strings.TrimSpace(message.GroupHeader.SettlementDate),
-	}}, nil
+	}}
+	if errs := domain.ValidateTransfer(request); len(errs) > 0 {
+		return domain.TransferCheckRequest{}, fmt.Errorf("%s", domain.ValidationReason(errs))
+	}
+	return request, nil
 }
+
+const MaxPacs008Bytes = 2 << 20
+const pacs008Namespace = "urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
 
 func decode(r io.Reader) (transferMessage, applicationHeader, string, error) {
 	var message transferMessage
 	var header applicationHeader
-	decoder := xml.NewDecoder(io.LimitReader(r, 2<<20))
+	raw, err := io.ReadAll(io.LimitReader(r, MaxPacs008Bytes+1))
+	if err != nil || len(raw) > MaxPacs008Bytes {
+		return message, header, "", fmt.Errorf("pacs.008 input exceeds limit or cannot be read")
+	}
+	// Validate the complete token stream before mapping; encoding/xml otherwise
+	// ignores duplicate scalar fields and fields in unexpected namespaces.
+	decoder := xml.NewDecoder(bytes.NewReader(raw))
+	paths := []string{}
+	seen := map[string]bool{}
+	mapped := singleValuePaths()
+	roots := 0
+	elements := 0
 	for {
 		token, err := decoder.Token()
 		if err == io.EOF {
@@ -125,23 +152,48 @@ func decode(r io.Reader) (transferMessage, applicationHeader, string, error) {
 		if err != nil {
 			return message, header, "", fmt.Errorf("invalid pacs.008 xml: %w", err)
 		}
-		start, ok := token.(xml.StartElement)
-		if !ok {
-			continue
-		}
-		switch start.Name.Local {
-		case "AppHdr":
-			if err := decoder.DecodeElement(&header, &start); err != nil {
-				return message, header, "", fmt.Errorf("invalid pacs.008 AppHdr: %w", err)
+		switch token := token.(type) {
+		case xml.Directive:
+			return message, header, "", fmt.Errorf("XML directives are unsupported")
+		case xml.CharData:
+			if len(paths) == 0 && strings.TrimSpace(string(token)) != "" {
+				return message, header, "", fmt.Errorf("unexpected XML content")
 			}
-		case "FIToFICstmrCdtTrf":
-			if err := decoder.DecodeElement(&message, &start); err != nil {
-				return message, header, "", fmt.Errorf("invalid pacs.008 transfer: %w", err)
+		case xml.StartElement:
+			elements++
+			if elements > 10000 || len(paths) >= 64 || len(token.Name.Local) > 128 {
+				return message, header, "", fmt.Errorf("pacs.008 structure exceeds parser limits")
 			}
-			return message, header, start.Name.Space, nil
+			if len(paths) == 0 {
+				roots++
+				if roots != 1 || token.Name.Local != "Document" || token.Name.Space != pacs008Namespace {
+					return message, header, "", fmt.Errorf("unsupported pacs.008 document or namespace")
+				}
+			}
+			paths = append(paths, token.Name.Local)
+			path := strings.Join(paths, "/")
+			if strings.HasPrefix(path, "Document/FIToFICstmrCdtTrf") && token.Name.Space != pacs008Namespace {
+				return message, header, "", fmt.Errorf("inconsistent pacs.008 namespace")
+			}
+			if mapped[path] && seen[path] {
+				return message, header, "", fmt.Errorf("duplicate pacs.008 element %s", path)
+			}
+			seen[path] = true
+		case xml.EndElement:
+			paths = paths[:len(paths)-1]
 		}
 	}
-	return message, header, "", fmt.Errorf("pacs.008 xml missing FIToFICstmrCdtTrf")
+	if !seen["Document/FIToFICstmrCdtTrf/GrpHdr"] {
+		return message, header, "", fmt.Errorf("pacs.008 group header is required")
+	}
+	var doc struct {
+		Header  applicationHeader `xml:"AppHdr"`
+		Message transferMessage   `xml:"FIToFICstmrCdtTrf"`
+	}
+	if err := xml.Unmarshal(raw, &doc); err != nil {
+		return message, header, "", err
+	}
+	return doc.Message, doc.Header, pacs008Namespace, nil
 }
 
 func parseTime(value string) (time.Time, error) {
@@ -182,4 +234,37 @@ func firstAgent(values ...agent) agent {
 }
 func agentRef(value agent) domain.Agent {
 	return domain.Agent{BICFI: strings.TrimSpace(value.FinancialInstitution.BICFI), Name: strings.TrimSpace(value.FinancialInstitution.Name)}
+}
+
+// Only mapped values have singleton semantics here. Ignored ISO structures
+// may legitimately repeat (for example postal address lines).
+func singleValuePaths() map[string]bool {
+	paths := map[string]bool{"Document": true, "Document/AppHdr": true}
+	base := "Document/FIToFICstmrCdtTrf"
+	for _, suffix := range []string{"", "/GrpHdr", "/GrpHdr/MsgId", "/GrpHdr/CreDtTm", "/GrpHdr/NbOfTxs", "/GrpHdr/IntrBkSttlmDt", "/CdtTrfTxInf", "/CdtTrfTxInf/PmtId", "/CdtTrfTxInf/PmtId/InstrId", "/CdtTrfTxInf/PmtId/EndToEndId", "/CdtTrfTxInf/PmtId/TxId", "/CdtTrfTxInf/PmtId/ClrSysRef", "/CdtTrfTxInf/IntrBkSttlmAmt", "/CdtTrfTxInf/InstdAmt", "/CdtTrfTxInf/RmtInf"} {
+		paths[base+suffix] = true
+	}
+	for _, party := range []string{"Dbtr", "Cdtr"} {
+		paths[base+"/CdtTrfTxInf/"+party] = true
+		paths[base+"/CdtTrfTxInf/"+party+"/Nm"] = true
+	}
+	for _, account := range []string{"DbtrAcct", "CdtrAcct"} {
+		for _, suffix := range []string{"", "/Id", "/Id/IBAN", "/Id/Othr", "/Id/Othr/Id"} {
+			paths[base+"/CdtTrfTxInf/"+account+suffix] = true
+		}
+	}
+	for _, agent := range []string{"DbtrAgt", "CdtrAgt", "InstgAgt", "InstdAgt"} {
+		for _, suffix := range []string{"", "/FinInstnId", "/FinInstnId/BICFI", "/FinInstnId/Nm"} {
+			paths[base+"/CdtTrfTxInf/"+agent+suffix] = true
+		}
+	}
+	for _, suffix := range []string{"/BizMsgIdr", "/MsgDefIdr", "/CreDt"} {
+		paths["Document/AppHdr"+suffix] = true
+	}
+	for _, party := range []string{"Fr", "To"} {
+		for _, suffix := range []string{"", "/FIId", "/FIId/FinInstnId", "/FIId/FinInstnId/BICFI", "/FIId/FinInstnId/Nm"} {
+			paths["Document/AppHdr/"+party+suffix] = true
+		}
+	}
+	return paths
 }

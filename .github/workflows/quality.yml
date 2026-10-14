@@ -54,5 +54,6 @@ jobs:
           GOWORK=off go work init "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/examples/custom-fraud" "$GITHUB_WORKSPACE/examples/custom-aml"
           for example in custom-fraud custom-aml; do
             cd "$GITHUB_WORKSPACE/examples/$example"
+            GOWORK="$task_workspace/go.work" go test ./...
             GOWORK="$task_workspace/go.work" go build ./...
           done

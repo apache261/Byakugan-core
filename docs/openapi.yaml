@@ -39,7 +39,8 @@ paths:
         "401": { description: API key required because API_KEYS is configured }
   /v1/transfer-checks/iso20022:
     post:
-      description: Parses the first CdtTrfTxInf record and returns a synchronous decision. A parsed transfer that fails domain validation returns 201 with a review decision and validation reasons.
+      description: Accepts one pacs.008.001.08 Document and one transfer, at most 2 MiB. Rejects inconsistent headers/namespaces, duplicate mapped elements, multi-transfer messages, and trailing XML.
+
       security:
         - {}
         - ApiKey: []
