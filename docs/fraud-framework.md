@@ -106,3 +106,28 @@ continue to reject unrecognized fields.
 Full compatibility permits legacy score-only hits with an empty outcome. Such
 hits contribute score and reasons; configured thresholds decide escalation.
 Other policies reject empty outcomes.
+
+## SaaS embedding provenance and execution guarantees
+
+`engine.Context.PolicyVersionID` is an optional caller-owned policy identity.
+The stateless `Framework.Evaluate` result echoes it as `policy_version_id`,
+including on cancellation and evaluation failure. Core does not activate,
+approve, persist, or retrieve that policy. The embedding application must retain
+the policy document and supplied facts/metrics if it needs historical replay.
+
+Evaluation orders registrations by ascending priority, retaining registration
+order for equal priorities. Each call uses a detached registry/context snapshot;
+concurrent replacement affects later snapshots. Callers must not mutate inputs
+while the snapshot is being copied, and custom evaluators must be safe for
+concurrent calls. No callback runs while the registry lock is held.
+
+Cancellation is cooperative: Core checks cancellation between steps and forwards
+the context; custom callbacks must honor it. Evaluator failures return an error
+and a conservative review/block result according to the explicit failure policy.
+Required data retrieval and freshness checks belong to the caller. Missing data
+must not be represented as a successful zero-valued lookup when that would weaken
+a required signal. Pure AML observations remain separate from fraud outcomes.
+
+Run the reproducible rule-count and supplied-aggregate benchmarks from the module
+root: `go test -run '^$' -bench BenchmarkFramework -benchmem -benchtime=50x ./engine`.
+These measure evaluation only, excluding HTTP, persistence, and feature retrieval.

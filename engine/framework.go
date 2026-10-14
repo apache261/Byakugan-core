@@ -61,10 +61,11 @@ func FullCompatibilityPolicy() Policy {
 
 // Result deliberately has no generated identity, replay key, history or storage.
 type Result struct {
-	Decision domain.Decision  `json:"decision"`
-	Score    float64          `json:"score"`
-	Reasons  []string         `json:"reasons"`
-	RuleHits []domain.RuleHit `json:"rule_hits"`
+	PolicyVersionID string           `json:"policy_version_id,omitempty"`
+	Decision        domain.Decision  `json:"decision"`
+	Score           float64          `json:"score"`
+	Reasons         []string         `json:"reasons"`
+	RuleHits        []domain.RuleHit `json:"rule_hits"`
 }
 
 // Framework holds immutable registry snapshots, not transfer state. Its zero
@@ -190,7 +191,7 @@ func (f *Framework) snapshot() ([]evaluationStep, Policy) {
 // Inputs are detached before callbacks; callers must not mutate inputs while
 // Evaluate is taking its snapshot. Cancellation is cooperative, not preemptive.
 func (f *Framework) Evaluate(ctx context.Context, req domain.TransferCheckRequest, data Context) (Result, error) {
-	result := Result{Decision: domain.DecisionAllow, Reasons: []string{"no fraud signal detected"}, RuleHits: []domain.RuleHit{}}
+	result := Result{PolicyVersionID: data.PolicyVersionID, Decision: domain.DecisionAllow, Reasons: []string{"no fraud signal detected"}, RuleHits: []domain.RuleHit{}}
 	steps, policy := f.snapshot()
 	var failures []error
 	fail := func(err error) {

@@ -18,7 +18,7 @@ func TestParsePacs008(t *testing.T) {
 
 func TestParsePacs008RejectsNonFiniteAmounts(t *testing.T) {
 	for _, amount := range []string{"NaN", "Inf", "-Inf"} {
-		xml := `<Document><FIToFICstmrCdtTrf><GrpHdr><MsgId>msg</MsgId><CreDtTm>2026-09-21T08:00:00Z</CreDtTm></GrpHdr><CdtTrfTxInf><PmtId><EndToEndId>e2e</EndToEndId></PmtId><IntrBkSttlmAmt Ccy="PHP">` + amount + `</IntrBkSttlmAmt></CdtTrfTxInf></FIToFICstmrCdtTrf></Document>`
+		xml := `<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"><FIToFICstmrCdtTrf><GrpHdr><MsgId>msg</MsgId><CreDtTm>2026-09-21T08:00:00Z</CreDtTm></GrpHdr><CdtTrfTxInf><PmtId><EndToEndId>e2e</EndToEndId></PmtId><IntrBkSttlmAmt Ccy="PHP">` + amount + `</IntrBkSttlmAmt></CdtTrfTxInf></FIToFICstmrCdtTrf></Document>`
 		if _, err := ParsePacs008(strings.NewReader(xml), ""); err == nil {
 			t.Fatalf("amount %q accepted", amount)
 		}
@@ -33,7 +33,7 @@ func TestParsePacs008PreservesExactLargeAmountAndCurrencyScale(t *testing.T) {
 		{"999999999999999999.99", "USD", "999999999999999999.99", false},
 		{"0.001", "KWD", "0.001", false}, {"1.1", "JPY", "", true}, {"0", "PHP", "", true},
 	} {
-		xml := `<Document><FIToFICstmrCdtTrf><GrpHdr><MsgId>msg</MsgId><CreDtTm>2026-09-21T08:00:00Z</CreDtTm></GrpHdr><CdtTrfTxInf><PmtId><EndToEndId>e2e</EndToEndId></PmtId><IntrBkSttlmAmt Ccy="` + tc.currency + `">` + tc.amount + `</IntrBkSttlmAmt></CdtTrfTxInf></FIToFICstmrCdtTrf></Document>`
+		xml := `<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"><FIToFICstmrCdtTrf><GrpHdr><MsgId>msg</MsgId><CreDtTm>2026-09-21T08:00:00Z</CreDtTm></GrpHdr><CdtTrfTxInf><PmtId><EndToEndId>e2e</EndToEndId></PmtId><IntrBkSttlmAmt Ccy="` + tc.currency + `">` + tc.amount + `</IntrBkSttlmAmt><DbtrAcct><Id><Othr><Id>debtor</Id></Othr></Id></DbtrAcct><CdtrAcct><Id><Othr><Id>creditor</Id></Othr></Id></CdtrAcct><DbtrAgt><FinInstnId><BICFI>DEUTPHMM</BICFI></FinInstnId></DbtrAgt><CdtrAgt><FinInstnId><BICFI>BOPIPHMM</BICFI></FinInstnId></CdtrAgt></CdtTrfTxInf></FIToFICstmrCdtTrf></Document>`
 		req, err := ParsePacs008(strings.NewReader(xml), "")
 		if tc.invalid {
 			if err == nil {

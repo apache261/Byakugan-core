@@ -205,3 +205,32 @@ and distinguish reported research evidence from unvalidated example thresholds.
 ## Core or Full?
 
 [Compare editions and explore Byakugan Full](readmepro.md).
+
+## v0.3.1 parser hardening and embedding benchmarks
+
+The single-transfer XML adapter accepts one complete `pacs.008.001.08` Document,
+checks header/namespace agreement and the declared transaction count, and rejects
+duplicate mapped elements, multiple transfers/documents, malformed trailing XML,
+directives, excessive nesting/element counts, and inputs over 2 MiB (including trailing whitespace). Canonical
+transfer validation applies after mapping. Integrations accepting batches must
+provide a separate per-item contract; this parser never selects only the first
+transfer. This tightens acceptance of inputs previously mapped permissively.
+
+The stateless framework accepts optional caller-owned `PolicyVersionID` provenance
+and echoes it in its result. Policy administration and durable evidence remain
+the embedding application's responsibility.
+
+Synthetic benchmark sample (2026-10-14, Linux amd64, Intel Core 5 120U,
+50 iterations per case):
+
+| Rules | Amount comparisons | Supplied velocity aggregates |
+| --- | --- | --- |
+| 1 | 10.0 microseconds/op | 7.8 microseconds/op |
+| 10 | 64.7 microseconds/op | 60.5 microseconds/op |
+| 100 | 572.5 microseconds/op | 385.5 microseconds/op |
+| 1,000 | 3.74 milliseconds/op | 3.62 milliseconds/op |
+
+Reproduce with `go test -run '^$' -bench BenchmarkFramework -benchmem -benchtime=50x ./engine`.
+Results describe this local evaluator workload, not a production throughput or
+latency guarantee. Independent consumer tests verify public evaluation and
+cancellation contracts without importing application internals.

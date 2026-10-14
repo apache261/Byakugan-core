@@ -35,6 +35,8 @@ type Options struct {
 // account service, or configuration system. Zero thresholds disable score-based
 // escalation; explicit rule outcomes still apply.
 type Context struct {
+	// PolicyVersionID is caller-supplied provenance, never operational authority.
+	PolicyVersionID           string
 	Facts                     map[string]json.RawMessage
 	PolicyValues              map[string]json.RawMessage
 	Rules                     rules.Context
