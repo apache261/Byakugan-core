@@ -200,6 +200,8 @@ func TestAMLRegistrySnapshotAndCallerInputIsolation(t *testing.T) {
 			return Observation{}, ctx.Err()
 		}
 		input.Facts["risk"][0] = 'f'
+		delete(input.Metrics, "synthetic.count")
+		delete(input.Screening, "synthetic.match")
 		input.Transaction.Metadata["synthetic.context"].(map[string]any)["risk"] = "changed"
 		return customObservation("gate"), nil
 	})}
@@ -208,6 +210,8 @@ func TestAMLRegistrySnapshotAndCallerInputIsolation(t *testing.T) {
 	defer cancel()
 	input := exactInput()
 	input.Facts = map[string]json.RawMessage{"risk": json.RawMessage(`true`)}
+	input.Metrics = map[string]domain.Decimal{"synthetic.count": domain.MustDecimal("1")}
+	input.Screening = map[string]bool{"synthetic.match": true}
 	input.Transaction.Metadata = map[string]any{"synthetic.context": map[string]any{"risk": "original"}}
 	done := make(chan Result, 1)
 	go func() { got, _ := f.Evaluate(ctx, input); done <- got }()
@@ -233,6 +237,9 @@ func TestAMLRegistrySnapshotAndCallerInputIsolation(t *testing.T) {
 	}
 	if string(input.Facts["risk"]) != "true" || input.Transaction.Metadata["synthetic.context"].(map[string]any)["risk"] != "original" {
 		t.Fatal("callback mutated caller input")
+	}
+	if input.Metrics["synthetic.count"] != domain.MustDecimal("1") || !input.Screening["synthetic.match"] {
+		t.Fatal("callback mutated caller metrics or screening facts")
 	}
 }
 

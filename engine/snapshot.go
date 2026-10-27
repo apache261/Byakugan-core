@@ -2,9 +2,9 @@ package engine
 
 import (
 	"encoding/json"
+	"maps"
+
 	"github.com/apache261/Byakugan-core/domain"
-	"github.com/apache261/Byakugan-core/rules"
-	"time"
 )
 
 func cloneRawMap(values map[string]json.RawMessage) map[string]json.RawMessage {
@@ -22,13 +22,7 @@ func cloneEvaluationContext(data Context) Context {
 	data.PolicyValues = cloneRawMap(data.PolicyValues)
 	data.DisabledRuleIDs = append([]string(nil), data.DisabledRuleIDs...)
 	data.BlockedAccountIDs = append([]string(nil), data.BlockedAccountIDs...)
-	if data.Rules.MetricsByWindow != nil {
-		metrics := make(map[time.Duration]rules.Metrics, len(data.Rules.MetricsByWindow))
-		for key, value := range data.Rules.MetricsByWindow {
-			metrics[key] = value
-		}
-		data.Rules.MetricsByWindow = metrics
-	}
+	data.Rules.MetricsByWindow = maps.Clone(data.Rules.MetricsByWindow)
 	if data.Rules.History != nil {
 		history := append([]domain.TransferCheck(nil), data.Rules.History...)
 		for i := range history {

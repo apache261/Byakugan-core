@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
+
 	"github.com/apache261/Byakugan-core/aml/domain"
 )
 
@@ -21,20 +23,8 @@ func cloneInput(input Input) (Input, error) {
 	input.Facts = cloneRawMap(input.Facts)
 	input.PolicyValues = cloneRawMap(input.PolicyValues)
 	input.EvidenceIDs = append([]string(nil), input.EvidenceIDs...)
-	if input.Metrics != nil {
-		metrics := make(map[string]domain.Decimal, len(input.Metrics))
-		for key, value := range input.Metrics {
-			metrics[key] = value
-		}
-		input.Metrics = metrics
-	}
-	if input.Screening != nil {
-		screening := make(map[string]bool, len(input.Screening))
-		for key, value := range input.Screening {
-			screening[key] = value
-		}
-		input.Screening = screening
-	}
+	input.Metrics = maps.Clone(input.Metrics)
+	input.Screening = maps.Clone(input.Screening)
 	input.Transaction.Subjects = append([]domain.SubjectReference(nil), input.Transaction.Subjects...)
 	if input.Transaction.RelatedTransaction != nil {
 		link := *input.Transaction.RelatedTransaction

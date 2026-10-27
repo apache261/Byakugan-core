@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/apache261/Byakugan-core/domain"
+	"github.com/apache261/Byakugan-core/rules"
 )
 
 func custom(id string, priority int, outcome domain.Decision, score float64) Registration {
@@ -200,6 +201,7 @@ func TestFrameworkDetachesRulesAndCallbackContextWithoutReplay(t *testing.T) {
 		calls++
 		data.Facts["risk"][0] = 'f'
 		data.DisabledRuleIDs[0] = "original"
+		delete(data.Rules.MetricsByWindow, time.Hour)
 		return nil, nil
 	})}
 	f := framework(t, []domain.Rule{rule}, []Registration{callback}, DefaultPolicy())
@@ -211,6 +213,7 @@ func TestFrameworkDetachesRulesAndCallbackContextWithoutReplay(t *testing.T) {
 		snapshot[0].Definition[i] = 'x'
 	}
 	data := Context{Facts: map[string]json.RawMessage{"risk": json.RawMessage(`true`)}, DisabledRuleIDs: []string{"unused"}}
+	data.Rules.MetricsByWindow = map[time.Duration]rules.Metrics{time.Hour: {DebtorTransferCount: 7}}
 	for i := 0; i < 2; i++ {
 		got, err := f.Evaluate(context.Background(), validRequest(), data)
 		if err != nil || len(got.RuleHits) != 1 {
@@ -219,6 +222,9 @@ func TestFrameworkDetachesRulesAndCallbackContextWithoutReplay(t *testing.T) {
 	}
 	if calls != 2 || string(data.Facts["risk"]) != "true" || data.DisabledRuleIDs[0] != "unused" {
 		t.Fatalf("replay or caller mutation: %d %+v", calls, data)
+	}
+	if data.Rules.MetricsByWindow[time.Hour].DebtorTransferCount != 7 {
+		t.Fatal("callback mutated caller metrics")
 	}
 }
 
