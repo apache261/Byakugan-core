@@ -55,7 +55,7 @@ using just your configured rules, follow [getting started](../getting-started.md
 Inside your Go module, install the public release:
 
 ```sh
-go get github.com/apache261/Byakugan-core@v0.3.0
+go get github.com/apache261/Byakugan-core@v0.3.1
 ```
 
 Import `github.com/apache261/Byakugan-core/iso20022` and pass an `io.Reader`

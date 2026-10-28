@@ -1,13 +1,13 @@
 # Import Core and evaluate a transfer
 
 This example creates your own application outside the Core repository. Install
-Go 1.24 or newer, then create a module and pin Core v0.3.0:
+Go 1.24 or newer, then create a module and pin Core v0.3.1:
 
 ```sh
 mkdir my-fraud-app
 cd my-fraud-app
 go mod init example.com/my-fraud-app
-go get github.com/apache261/Byakugan-core@v0.3.0
+go get github.com/apache261/Byakugan-core@v0.3.1
 ```
 
 Import packages under `github.com/apache261/Byakugan-core`, preserving the case

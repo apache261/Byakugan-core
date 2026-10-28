@@ -1,5 +1,7 @@
 # Byakugan Core
 
+[Documentation index](docs/README.md) · [Runnable examples](examples/README.md)
+
 **Explainable payment-fraud decisions without a heavyweight platform.**
 
 Byakugan Core is the Apache-2.0 fraud-decision library behind Byakugan. Embed it
@@ -204,7 +206,7 @@ and distinguish reported research evidence from unvalidated example thresholds.
 
 ## Core or Full?
 
-[Compare editions and explore Byakugan Full](readmepro.md).
+[Compare editions and explore Byakugan Full](docs/full-edition.md).
 
 ## v0.3.1 parser hardening and embedding benchmarks
 

@@ -1,5 +1,9 @@
 # Exact-money Migration for Core v0.3.0
 
+This is the breaking-contract guide for the original v0.3.0 migration. New
+applications should use the v0.3.1 parser-hardening release. Existing independent
+consumer modules retain their explicit v0.3.0 demonstration pins.
+
 v0.3.0 introduces the breaking contracts below. Existing
 v0.2.0 consumers keep their existing Go/JSON contracts until they upgrade.
 
